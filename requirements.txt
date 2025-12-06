@@ -1,0 +1,14 @@
+scapy
+pyshark
+scikit-learn
+xgboost
+joblib
+numpy
+pandas
+flask
+flask-socketio
+python-socketio
+eventlet
+matplotlib
+seaborn
+torch

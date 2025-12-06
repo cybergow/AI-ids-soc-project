@@ -1,0 +1,23 @@
+# IDS Project - Python Dependencies
+# Generated for detector_server.py integration
+
+# Web Framework & Real-time
+Flask==2.3.3
+flask-cors==4.0.0
+flask-socketio==5.3.4
+python-socketio==5.9.0
+python-engineio==4.7.1
+eventlet==0.33.3
+
+# Data Science & ML
+numpy==1.24.3
+scikit-learn==1.3.0
+scipy==1.11.2
+joblib==1.3.1
+
+# ML Model Runtime (Optional but recommended)
+onnxruntime==1.16.0
+
+# Utilities
+python-dotenv==1.0.0
+Werkzeug==2.3.7
