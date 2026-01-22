@@ -261,12 +261,197 @@ This section explains a simple, concrete flow for how data moves through your sy
 
 Over time, this feedback loop moves your system closer to the behavior of mature products like Darktrace, Vectra AI, and CrowdStrike—continuously learning from the environment and analyst decisions.
 
+## 10. Frontend UI / Dashboard Design
+
+This section describes how the user interface of your AI-powered threat detection system should be designed, the main pages, and the key components on each page. The goal is to give analysts a clear, fast, and intuitive way to detect, investigate, and respond to threats.
+
+### 10.1 Overall UI Principles
+
+- **Dark, SOC-friendly theme**
+  - Dark background with high-contrast text to reduce eye strain for 24/7 use.
+  - Consistent color coding for severity: green (Low), yellow (Medium), orange (High), red (Critical).
+- **Consistent layout**
+  - Left sidebar (or top navbar) for navigation.
+  - Top bar for global filters (time range, environment), search, and user profile.
+  - Main content area for dashboards, tables, and detail views.
+- **Responsive design**
+  - Layout should adapt to different screen sizes (laptop, widescreen monitors).
+- **Usability first**
+  - Minimal clicks to reach critical information.
+  - Clear labels, tooltips, and empty-state messages.
+
+### 10.2 Main Pages Overview
+
+The frontend can be organized into the following main pages:
+
+- **Login & Access Control Page**
+- **Global Dashboard (Home)**
+- **Alerts & Incidents Page**
+- **Entity Detail Pages (Hosts / Users / IPs)**
+- **Threat Hunting / Search Page (optional, nice-to-have)**
+- **Analytics & Reports Page**
+- **System Health & Model Status Page**
+- **Settings & Configuration Page**
+
+Each page is described below.
+
+### 10.3 Login & Access Control Page
+
+**Purpose:** Control access to the SOC dashboard and support basic roles (Admin, Analyst).
+
+**Key components:**
+
+- Login form (username/email, password).
+- Role-based redirect after login (e.g., Admin → Settings + Dashboard, Analyst → Dashboard).
+- Error messages for invalid credentials.
+- Optional: "Forgot password" link (can be mocked in the project).
+
+### 10.4 Global Dashboard (Home)
+
+**Purpose:** High-level overview of current security posture, similar to commercial SIEM/SOC tools.
+
+**Layout & components:**
+
+- **Global filters bar (top):**
+  - Time range selector (Last 15 min, 1h, 24h, 7d, custom).
+  - Environment / network segment selector (e.g., Prod, Test, DMZ).
+  - Search bar for quick lookup of IP, host, user, or alert ID.
+- **KPI cards row:**
+  - Total alerts in selected period.
+  - Alerts by severity (with mini bar or donut chart).
+  - Number of active incidents.
+  - Top risky entities (e.g., most-alerted host).
+- **Trends & charts section:**
+  - Time series chart of alerts over time, segmented by severity.
+  - Optional: stacked bar chart of alert types (malware, port scan, brute force, exfiltration).
+- **Geo / network view (optional, if data available):**
+  - Map or schematic view showing external connections, highlighting risky regions or IPs.
+- **Recent alerts table (bottom or right panel):**
+  - Paginated table with columns: Time, Severity, Type, Source, Destination, Status.
+  - Click on a row opens the Alert Detail drawer or navigates to the Alerts page.
+
+### 10.5 Alerts & Incidents Page
+
+**Purpose:** Primary working area where analysts triage and investigate alerts.
+
+**Layout & components:**
+
+- **Filters panel (left or top):**
+  - Severity (Low/Medium/High/Critical).
+  - Status (Open / In Progress / Resolved).
+  - Alert type (port scan, brute force, anomaly, malware, exfiltration, etc.).
+  - Time range.
+  - Source entity (host, user, IP).
+- **Alerts table:**
+  - Columns: Severity (icon + color), Time, Type, Source, Destination, Risk Score, Status.
+  - Sorting by time, severity, risk score.
+  - Bulk selection for mass actions (e.g., mark as resolved).
+- **Alert Detail panel / drawer:**
+  - Opens when an alert is clicked (side panel or separate route).
+  - Shows:
+    - Summary: severity, risk score, category, timestamp.
+    - Entities: source/destination IPs, hostnames, users.
+    - Evidence: features, triggered rules, anomaly scores.
+    - Timeline: related alerts before/after this alert.
+    - Actions: change status, add comment, mark as true/false positive.
+- **Incidents tab (optional):**
+  - List of correlated incidents with:
+    - Incident ID, severity, number of alerts, affected hosts/users, status.
+  - Clicking an incident opens an Incident Detail view with a timeline of alerts.
+
+### 10.6 Entity Detail Pages (Hosts / Users / IPs)
+
+**Purpose:** Provide a 360° view of a single entity, similar to how CrowdStrike or Defender show host/user pages.
+
+**Common components for all entity types:**
+
+- Header with entity identifier (hostname, username, IP) and risk summary.
+- Badges for entity type, tags (e.g., "Server", "Critical", "Test").
+- **Risk & activity overview:**
+  - Recent risk score trend for this entity.
+  - Count of alerts by severity.
+- **Activity timeline:**
+  - Chronological list of key events and alerts involving this entity.
+- **Related entities section:**
+  - Other hosts/users/IPs frequently communicating or co-involved in alerts.
+- **Actions:**
+  - Quick links (e.g., "View in Alerts", "Isolate host" – can be mocked).
+
+### 10.7 Threat Hunting / Search Page (Optional)
+
+**Purpose:** Allow more advanced users to run ad-hoc queries across alerts and telemetry.
+
+**Key components:**
+
+- Search bar with support for simple query language (e.g., `source_ip:10.0.0.5 AND severity:high`).
+- Filter builder UI for non-technical users.
+- Results table similar to the Alerts table but focused on flexible queries.
+- Option to save searches for reuse.
+
+### 10.8 Analytics & Reports Page
+
+**Purpose:** Provide longer-term visibility into trends and help with management reporting.
+
+**Components:**
+
+- Time range selector (supporting weeks/months).
+- Charts:
+  - Alerts trend over weeks/months.
+  - Alert types distribution.
+  - Top N risky entities.
+- Reports section:
+  - Predefined summary cards (e.g., "Last 7 days incidents", "MTTD/MTTR").
+  - Option to export data/summary (e.g., CSV or PDF summary – even if mocked).
+
+### 10.9 System Health & Model Status Page
+
+**Purpose:** Show if the platform itself is healthy and if the AI components are working.
+
+**Components:**
+
+- System status cards:
+  - Ingestion status (up/down, events per second).
+  - Processing pipeline status (queue sizes, error rate).
+  - Database status (reachable, storage usage).
+- Model status section:
+  - List of deployed models (name, version, last update time).
+  - Basic metrics (e.g., average anomaly score distribution, number of alerts triggered per model).
+- Logs/alerts for system issues (e.g., "no data received in last 10 minutes").
+
+### 10.10 Settings & Configuration Page
+
+**Purpose:** Central place for administrators to configure the system.
+
+**Sections:**
+
+- **Data sources:**
+  - Configure which sensors/log sources are enabled.
+  - View connection status for each source.
+- **Detection rules & thresholds:**
+  - List of rule-based detections with enable/disable toggles.
+  - Threshold sliders/inputs for things like failed login count, port scan limits, exfiltration volume.
+- **Alerting policies:**
+  - Configure which severities generate email/notification (even if not fully implemented).
+- **User & roles management (basic):**
+  - List of users, their roles (Admin/Analyst), and ability to change roles.
+
+### 10.11 Reuse & Componentization
+
+From an implementation perspective, many of these UX elements can be built as reusable components:
+
+- KPI cards
+- Severity badges and icons
+- Alert and incident tables
+- Time range pickers and filter panels
+- Entity headers and risk summary widgets
+
+This makes it easier to maintain a consistent look-and-feel across the entire application and speeds up development.
+
 ## References
 1. Darktrace Enterprise Immune System
 2. Vectra AI Network Detection and Response
 3. CrowdStrike Falcon Platform
 4. Microsoft Defender for Endpoint
 5. Palo Alto Networks Cortex XDR
-
 ---
 *This document provides a high-level overview. Detailed technical specifications and implementation details should be documented in separate architecture and design documents.*
