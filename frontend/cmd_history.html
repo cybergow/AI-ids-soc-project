@@ -226,9 +226,9 @@
             }).join('');
         }
 
-        function showCmdAlertDetails(alert) {
-            const details = `Severity: ${alert.severity.toUpperCase()}\nConfidence: ${(alert.confidence * 100).toFixed(1)}%\nCommand: ${alert.command}\nReason: ${alert.reason}`;
-            alert(`Command Alert Details:\n\n${details}`);
+        function showCmdAlertDetails(cmdAlert) {
+            const details = `Severity: ${cmdAlert.severity.toUpperCase()}\nConfidence: ${(cmdAlert.confidence * 100).toFixed(1)}%\nCommand: ${cmdAlert.command}\nReason: ${cmdAlert.reason}`;
+            window.alert(`Command Alert Details:\n\n${details}`);
         }
 
         function filterCmdAlerts(severity, ev) {
@@ -245,142 +245,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', initializeDashboard);
-    </script>
-</body>
-</html>localhost:5000/api';
-        const POLLING_INTERVAL = 5000; // 5 seconds
-
-        const dashboardState = {
-            cmdAlerts: [],
-            lastUpdate: null,
-            mlMode: 'unknown'
-        };
-
-        async function fetchHealthStatus() {
-            try {
-                const response = await fetch(`${API_URL}/health`);
-                const data = await response.json();
-                updateSystemStatus(data);
-                return data;
-            } catch (error) {
-                console.error('Health check error:', error);
-                document.getElementById('statusText').textContent = 'Offline';
-                return null;
-            }
-        }
-
-        async function fetchCmdDetections(limit = 100, severity = null) {
-            try {
-                let url = `${API_URL}/cmd-detections?limit=${limit}`;
-                if (severity) url += `&severity=${severity}`;
-
-                const response = await fetch(url);
-                const data = await response.json();
-                dashboardState.cmdAlerts = data.detections || [];
-                dashboardState.lastUpdate = new Date();
-                updateCmdAlertsTable(dashboardState.cmdAlerts);
-                return data;
-            } catch (error) {
-                console.error('Fetch CMD detections error:', error);
-                return null;
-            }
-        }
-
-        async function updateDashboard() {
-            console.log('Updating CMD history...');
-            await fetchCmdDetections(100);
-        }
-
-        function updateCmdAlertsTable(alerts) {
-            const tbody = document.getElementById('cmdAlertsBody');
-
-            if (!alerts || alerts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="loading">✅ No malicious commands detected - Clean!</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = '';
-
-            alerts.forEach(alert => {
-                const row = document.createElement('tr');
-                row.style.cursor = 'pointer';
-
-                const severity = alert.severity || 'low';
-                const severityClass = `severity-${severity}`;
-                const severityBadge = `<span class="severity-badge ${severityClass}">${severity.toUpperCase()}</span>`;
-
-                const timestamp = new Date(alert.timestamp * 1000).toLocaleString();
-                const confidence = (alert.confidence * 100).toFixed(1);
-
-                let confidenceClass = 'confidence-low';
-                if (confidence >= 80) confidenceClass = 'confidence-high';
-                else if (confidence >= 50) confidenceClass = 'confidence-medium';
-
-                const cmdDisplay = alert.command.substring(0, 80) +
-                    (alert.command.length > 80 ? '...' : '');
-
-                row.innerHTML = `
-                    <td>${timestamp}</td>
-                    <td>${severityBadge}</td>
-                    <td><span class="cmd-text" title="${alert.command}">${cmdDisplay}</span></td>
-                    <td><span class="confidence-score ${confidenceClass}">${confidence}%</span></td>
-                    <td>${alert.reason || 'Malicious pattern detected'}</td>
-                `;
-
-                row.addEventListener('click', () => showCmdAlertDetails(alert));
-                tbody.appendChild(row);
-            });
-        }
-
-        function showCmdAlertDetails(alert) {
-            const details = `
-Severity: ${alert.severity.toUpperCase()}
-Confidence: ${(alert.confidence * 100).toFixed(1)}%
-Command: ${alert.command}
-Reason: ${alert.reason}
-Timestamp: ${new Date(alert.timestamp * 1000).toLocaleString()}
-Matched Pattern: ${alert.matched_pattern || 'AI Detection'}
-            `;
-            alert(`Command Alert Details:\n\n${details}`);
-        }
-
-        function updateSystemStatus(health) {
-            if (health) {
-                document.getElementById('statusText').textContent = 'System Online';
-            }
-        }
-
-        function filterCmdAlerts(severity, ev) {
-            const buttons = document.querySelectorAll('.controls .filter-btn');
-            buttons.forEach(btn => btn.classList.remove('active'));
-            if (ev && ev.target) {
-                ev.target.classList.add('active');
-            }
-
-            if (severity === 'all') {
-                updateCmdAlertsTable(dashboardState.cmdAlerts);
-            } else {
-                const filtered = dashboardState.cmdAlerts.filter(a => a.severity === severity);
-                updateCmdAlertsTable(filtered);
-            }
-        }
-
-        async function initializeDashboard() {
-            console.log('🚀 Initializing CMD History Dashboard...');
-            await fetchHealthStatus();
-            await updateDashboard();
-
-            setInterval(async () => {
-                await updateDashboard();
-                console.log('📊 CMD history updated');
-            }, POLLING_INTERVAL);
-
-            console.log('✅ CMD History initialized and polling every ' + (POLLING_INTERVAL / 1000) + ' seconds');
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            initializeDashboard();
-        });
     </script>
 </body>
 </html>
