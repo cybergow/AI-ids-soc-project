@@ -8,6 +8,7 @@ import socket
 FLOW_TIMEOUT = 10  # seconds; adjust for faster testing
 flows = {}
 lock = threading.Lock()
+stop_event = threading.Event()
 
 def make_key(pkt):
     ip = pkt.getlayer(IP)
@@ -31,7 +32,7 @@ def update_flow(key, pkt):
             f['dst2src_pkts'] += 1
 
 def flush_old_flows(cb):
-    while True:
+    while not stop_event.is_set():
         now = time.time()
         with lock:
             old = [k for k,v in list(flows.items()) if now - v['last_ts'] > FLOW_TIMEOUT]
@@ -66,9 +67,17 @@ def send_udp(feat, addr=('127.0.0.1',9999)):
     s.close()
     print(f"[extractor] sent flow {feat.get('src_ip')} -> {feat.get('dst_ip')} pkt_count={feat.get('pkt_count')}")
 
+def start_capture(interface=None, udp_addr=('127.0.0.1', 9999), l3_socket=True):
+    if l3_socket:
+        conf.L3socket = True
+    stop_event.clear()
+    threading.Thread(target=flush_old_flows, args=(lambda feat: send_udp(feat, udp_addr),), daemon=True).start()
+    sniff(prn=packet_cb, store=False, iface=interface)
+
+def stop_capture():
+    stop_event.set()
+
 if __name__ == '__main__':
     print("Starting flow extractor. (May need root/admin for sniffing)")
     print("Configuring for Layer 3 sniffing (no WinPcap required).")
-    conf.L3socket=True
-    threading.Thread(target=flush_old_flows, args=(send_udp,), daemon=True).start()
-    sniff(prn=packet_cb, store=False)  # optionally add iface="Ethernet" or your interface name
+    start_capture()

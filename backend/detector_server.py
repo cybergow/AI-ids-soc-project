@@ -14,6 +14,12 @@ from flask_socketio import SocketIO
 from flask_cors import CORS
 from system_monitor import SystemCommandMonitor
 
+try:
+    from flow_extractor import start_capture as start_flow_capture
+    FLOW_EXTRACTOR_AVAILABLE = True
+except Exception:
+    FLOW_EXTRACTOR_AVAILABLE = False
+
 # ✅ IMPORT HYBRID DETECTOR (Regex + AI)
 try:
     from cmd_detector_hybrid import HybridCMDDetector
@@ -181,6 +187,30 @@ def init_db():
         raise
 
 db_conn = init_db()
+
+def start_flow_extractor_background():
+    if not FLOW_EXTRACTOR_AVAILABLE:
+        logger.warning("⚠️  Flow extractor not available (scapy missing or import failed)")
+        return
+
+    enabled = os.environ.get('ENABLE_FLOW_EXTRACTOR', '0').strip() == '1'
+    if not enabled:
+        logger.info("ℹ️  Flow extractor disabled. Set ENABLE_FLOW_EXTRACTOR=1 to sniff real traffic.")
+        return
+
+    iface = os.environ.get('FLOW_EXTRACTOR_IFACE') or None
+    udp_host = os.environ.get('FLOW_EXTRACTOR_UDP_HOST', '127.0.0.1')
+    udp_port = int(os.environ.get('FLOW_EXTRACTOR_UDP_PORT', '9999'))
+    l3_socket = os.environ.get('FLOW_EXTRACTOR_L3', '1').strip() == '1'
+
+    def _run():
+        try:
+            logger.info(f"🛰️  Starting flow extractor (iface={iface or 'auto'}, udp={udp_host}:{udp_port})")
+            start_flow_capture(interface=iface, udp_addr=(udp_host, udp_port), l3_socket=l3_socket)
+        except Exception as e:
+            logger.error(f"❌ Flow extractor failed: {e}")
+
+    threading.Thread(target=_run, daemon=True).start()
 
 # ============================================================================
 # ROUTE HANDLERS - Detection Endpoints
@@ -820,6 +850,8 @@ if __name__ == '__main__':
     listener_thread = threading.Thread(target=udp_listener, daemon=True)
     listener_thread.start()
     logger.info("✅ UDP listener thread started")
+
+    start_flow_extractor_background()
     
     # Start Flask server
     logger.info("🌐 Starting Flask/SocketIO server on 0.0.0.0:5000")
