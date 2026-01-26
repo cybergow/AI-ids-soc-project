@@ -6,9 +6,12 @@ joblib
 numpy
 pandas
 flask
+flask-cors
 flask-socketio
 python-socketio
 eventlet
 matplotlib
 seaborn
 torch
+wmi
+pywin32

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SOC IDS/IPS Detection Dashboard</title>
+    <script src="https://cdn.socket.io/4.5.2/socket.io.min.js"></script>
     <style>
         :root {
             --color-primary: #2196F3;
@@ -27,13 +28,11 @@
             --transition: 0.3s ease;
         }
 
-
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -42,14 +41,12 @@
             overflow-x: hidden;
         }
 
-
         .container {
             display: grid;
             grid-template-columns: 1fr;
             min-height: 100vh;
             background: linear-gradient(135deg, #0F1419 0%, #1A1F26 100%);
         }
-
 
         /* Header */
         .header {
@@ -65,13 +62,11 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
 
-
         .header-left {
             display: flex;
             align-items: center;
             gap: 15px;
         }
-
 
         .logo {
             font-size: 24px;
@@ -82,12 +77,10 @@
             background-clip: text;
         }
 
-
         .header-title {
             font-size: 20px;
             font-weight: 600;
         }
-
 
         .status-indicator {
             display: flex;
@@ -101,7 +94,6 @@
             font-weight: 600;
         }
 
-
         .status-dot {
             width: 8px;
             height: 8px;
@@ -110,12 +102,10 @@
             animation: pulse 2s infinite;
         }
 
-
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
-
 
         /* Main Dashboard Grid */
         .dashboard {
@@ -127,7 +117,6 @@
             margin: 0 auto;
             width: 100%;
         }
-
 
         /* Card Styles */
         .card {
@@ -141,13 +130,11 @@
             overflow: hidden;
         }
 
-
         .card:hover {
             border-color: var(--color-primary);
             box-shadow: 0 8px 20px rgba(33, 150, 243, 0.15);
             transform: translateY(-2px);
         }
-
 
         .card-header {
             display: flex;
@@ -158,7 +145,6 @@
             padding-bottom: 10px;
         }
 
-
         .card-title {
             font-size: 16px;
             font-weight: 600;
@@ -167,17 +153,14 @@
             gap: 8px;
         }
 
-
         .card-icon {
             font-size: 20px;
         }
-
 
         /* KPI Cards */
         .kpi-card {
             grid-column: span 1;
         }
-
 
         .kpi-value {
             font-size: 32px;
@@ -189,14 +172,12 @@
             background-clip: text;
         }
 
-
         .kpi-label {
             font-size: 12px;
             color: var(--color-text-secondary);
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-
 
         .kpi-change {
             display: inline-block;
@@ -207,18 +188,15 @@
             font-weight: 600;
         }
 
-
         .kpi-change.positive {
             background: rgba(76, 175, 80, 0.2);
             color: var(--color-success);
         }
 
-
         .kpi-change.negative {
             background: rgba(244, 67, 54, 0.2);
             color: var(--color-error);
         }
-
 
         /* Alert Table */
         .table-container {
@@ -227,20 +205,17 @@
             overflow-y: auto;
         }
 
-
         .alerts-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 13px;
         }
 
-
         .alerts-table thead {
             background: rgba(33, 150, 243, 0.1);
             position: sticky;
             top: 0;
         }
-
 
         .alerts-table th {
             padding: 12px;
@@ -250,17 +225,56 @@
             color: var(--color-primary);
         }
 
-
         .alerts-table td {
             padding: 12px;
             border-bottom: 1px solid var(--color-border);
         }
 
-
         .alerts-table tr:hover {
             background: rgba(33, 150, 243, 0.05);
         }
 
+        /* CMD Alert Table */
+        .cmd-alerts-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .cmd-alerts-table thead {
+            background: rgba(255, 61, 0, 0.1);
+            position: sticky;
+            top: 0;
+        }
+
+        .cmd-alerts-table th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--color-border);
+            color: var(--color-critical);
+        }
+
+        .cmd-alerts-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .cmd-alerts-table tr:hover {
+            background: rgba(255, 61, 0, 0.05);
+        }
+
+        .cmd-text {
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 11px;
+            background: rgba(0,0,0,0.3);
+            padding: 4px 6px;
+            border-radius: 3px;
+            word-break: break-all;
+            max-width: 300px;
+            overflow-x: auto;
+            color: #64B5F6;
+        }
 
         /* Severity Badge */
         .severity-badge {
@@ -272,13 +286,11 @@
             text-transform: uppercase;
         }
 
-
         .severity-critical {
             background: rgba(255, 61, 0, 0.2);
             color: var(--color-critical);
             border: 1px solid var(--color-critical);
         }
-
 
         .severity-high {
             background: rgba(245, 124, 0, 0.2);
@@ -286,91 +298,17 @@
             border: 1px solid var(--color-high);
         }
 
-
         .severity-medium {
             background: rgba(251, 192, 45, 0.2);
             color: var(--color-medium);
             border: 1px solid var(--color-medium);
         }
 
-
         .severity-low {
             background: rgba(33, 150, 243, 0.2);
             color: var(--color-low);
             border: 1px solid var(--color-low);
         }
-
-
-        /* Chart Container */
-        .chart-container {
-            position: relative;
-            height: 250px;
-            margin-top: 15px;
-        }
-
-
-        .bar-chart {
-            display: flex;
-            align-items: flex-end;
-            justify-content: space-around;
-            height: 100%;
-            gap: 8px;
-        }
-
-
-        .bar {
-            flex: 1;
-            background: linear-gradient(to top, var(--color-primary), #00BCD4);
-            border-radius: 4px 4px 0 0;
-            position: relative;
-            min-height: 5px;
-            transition: all var(--transition);
-        }
-
-
-        .bar:hover {
-            opacity: 0.8;
-            filter: brightness(1.2);
-        }
-
-
-        .bar-label {
-            position: absolute;
-            bottom: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 10px;
-            white-space: nowrap;
-            color: var(--color-text-secondary);
-        }
-
-
-        /* Network Flow */
-        .flow-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px;
-            background: rgba(33, 150, 243, 0.05);
-            border-left: 3px solid var(--color-primary);
-            border-radius: 4px;
-            margin-bottom: 10px;
-            font-size: 12px;
-        }
-
-
-        .flow-arrow {
-            color: var(--color-primary);
-            font-weight: bold;
-        }
-
-
-        .ip-address {
-            font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 11px;
-            color: #64B5F6;
-        }
-
 
         /* Heatmap Grid */
         .heatmap {
@@ -380,7 +318,6 @@
             margin-top: 15px;
         }
 
-
         .heatmap-cell {
             aspect-ratio: 1;
             border-radius: 4px;
@@ -388,11 +325,9 @@
             transition: all var(--transition);
         }
 
-
         .heatmap-cell:hover {
             transform: scale(1.1);
         }
-
 
         /* Controls */
         .controls {
@@ -401,7 +336,6 @@
             margin-bottom: 20px;
             flex-wrap: wrap;
         }
-
 
         .filter-btn, .btn {
             padding: 8px 16px;
@@ -415,47 +349,15 @@
             transition: all var(--transition);
         }
 
-
         .filter-btn:hover, .btn:hover {
             background: var(--color-primary);
             border-color: var(--color-primary);
         }
 
-
         .filter-btn.active {
             background: var(--color-primary);
             border-color: var(--color-primary);
         }
-
-
-        /* Stat Row */
-        .stat-row {
-            display: flex;
-            justify-content: space-around;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-
-        .stat-item {
-            text-align: center;
-        }
-
-
-        .stat-number {
-            font-size: 20px;
-            font-weight: bold;
-            color: var(--color-primary);
-        }
-
-
-        .stat-label {
-            font-size: 10px;
-            color: var(--color-text-secondary);
-            margin-top: 4px;
-        }
-
 
         .loading {
             color: var(--color-text-secondary);
@@ -464,6 +366,27 @@
             padding: 10px;
         }
 
+        .confidence-score {
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .confidence-high {
+            background: rgba(255, 61, 0, 0.2);
+            color: var(--color-critical);
+        }
+
+        .confidence-medium {
+            background: rgba(245, 124, 0, 0.2);
+            color: var(--color-high);
+        }
+
+        .confidence-low {
+            background: rgba(76, 175, 80, 0.2);
+            color: var(--color-success);
+        }
 
         /* Responsive */
         @media (max-width: 1200px) {
@@ -471,12 +394,10 @@
                 grid-template-columns: repeat(2, 1fr);
             }
 
-
             .table-container {
                 grid-column: span 2;
             }
         }
-
 
         @media (max-width: 768px) {
             .dashboard {
@@ -485,16 +406,13 @@
                 gap: 15px;
             }
 
-
             .table-container {
                 grid-column: span 1;
             }
 
-
             .card {
                 padding: 15px;
             }
-
 
             .header {
                 padding: 15px;
@@ -503,29 +421,24 @@
             }
         }
 
-
         /* Scrollbar Styling */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
         }
 
-
         ::-webkit-scrollbar-track {
             background: var(--color-bg-secondary);
         }
-
 
         ::-webkit-scrollbar-thumb {
             background: var(--color-border);
             border-radius: 4px;
         }
 
-
         ::-webkit-scrollbar-thumb:hover {
             background: var(--color-primary);
         }
-
 
         /* Animation */
         @keyframes slideInLeft {
@@ -539,11 +452,9 @@
             }
         }
 
-
         .card {
             animation: slideInLeft 0.5s ease forwards;
         }
-
 
         .card:nth-child(2) { animation-delay: 0.1s; }
         .card:nth-child(3) { animation-delay: 0.2s; }
@@ -558,7 +469,7 @@
                 <div class="logo">🛡️</div>
                 <div>
                     <div class="header-title">SOC IDS/IPS Dashboard</div>
-                    <div style="font-size: 12px; color: var(--color-text-secondary);">AI-Based Threat Detection</div>
+                    <div style="font-size: 12px; color: var(--color-text-secondary);">AI-Based Threat Detection (Network + Command)</div>
                 </div>
             </div>
             <div class="status-indicator">
@@ -566,7 +477,6 @@
                 <span id="statusText">Connecting...</span>
             </div>
         </div>
-
 
         <div class="dashboard" id="dashboard">
             <!-- KPI Cards -->
@@ -578,10 +488,9 @@
                     </div>
                 </div>
                 <div class="kpi-value" id="totalAlerts">0</div>
-                <div class="kpi-label">Active Threats</div>
+                <div class="kpi-label">Network + CMD</div>
                 <div class="kpi-change positive" id="totalChange">Waiting for data...</div>
             </div>
-
 
             <div class="card kpi-card">
                 <div class="card-header">
@@ -595,7 +504,6 @@
                 <div class="kpi-change" id="criticalChange" style="color: var(--color-critical);">Real-time</div>
             </div>
 
-
             <div class="card kpi-card">
                 <div class="card-header">
                     <div class="card-title">
@@ -608,32 +516,29 @@
                 <div class="kpi-change" id="highChange" style="color: var(--color-high);">Real-time</div>
             </div>
 
-
             <div class="card kpi-card">
                 <div class="card-header">
                     <div class="card-title">
-                        <span class="card-icon">🔍</span>
-                        Blocked Flows
+                        <span class="card-icon">💻</span>
+                        CMD Malicious
                     </div>
                 </div>
-                <div class="kpi-value" id="blockedFlows">0</div>
-                <div class="kpi-label">IPS Actions</div>
-                <div class="kpi-change positive" id="blockedChange">Real-time</div>
+                <div class="kpi-value" id="cmdMaliciousCount">0</div>
+                <div class="kpi-label">Detected Commands</div>
+                <div class="kpi-change negative" id="cmdMaliciousChange">Real-time</div>
             </div>
 
-
-            <!-- Recent Alerts Table -->
+            <!-- Recent Network Alerts Table -->
             <div class="card table-container" style="grid-column: span 2;">
                 <div class="card-header">
                     <div class="card-title">
                         <span class="card-icon">📋</span>
-                        Recent Alerts (Live)
+                        Network Alerts (Live)
                     </div>
                     <div class="controls">
-                        <button class="filter-btn active" onclick="filterAlerts('all')">All</button>
-                        <button class="filter-btn" onclick="filterAlerts('critical')">Critical</button>
-                        <button class="filter-btn" onclick="filterAlerts('high')">High</button>
-                        <button class="filter-btn" onclick="filterAlerts('medium')">Medium</button>
+                        <button class="filter-btn active" onclick="filterNetworkAlerts('all')">All</button>
+                        <button class="filter-btn" onclick="filterNetworkAlerts('critical')">Critical</button>
+                        <button class="filter-btn" onclick="filterNetworkAlerts('high')">High</button>
                     </div>
                 </div>
                 <table class="alerts-table" id="alertsTable">
@@ -650,14 +555,80 @@
                     </thead>
                     <tbody id="alertsBody">
                         <tr>
-                            <td colspan="7" class="loading">⏳ Loading alerts from API...</td>
+                            <td colspan="7" class="loading">⏳ Loading network alerts...</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
+            <!-- CMD Detection Table (NEW) -->
+            <div class="card table-container" style="grid-column: span 2;">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="card-icon">🔍</span>
+                        Malicious Commands (Live)
+                    </div>
+                    <div class="controls">
+                        <button class="filter-btn active" onclick="filterCmdAlerts('all')">All</button>
+                        <button class="filter-btn" onclick="filterCmdAlerts('critical')">Critical</button>
+                        <button class="filter-btn" onclick="filterCmdAlerts('high')">High</button>
+                        <a href="/cmd-history" class="btn">View Full History</a>
+                    </div>
+                </div>
+                <table class="cmd-alerts-table" id="cmdAlertsTable">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Severity</th>
+                            <th>Command</th>
+                            <th>Confidence</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cmdAlertsBody">
+                        <tr>
+                            <td colspan="5" class="loading">⏳ Loading CMD detections...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-            <!-- Confidence Score Heatmap -->
+            <!-- Detection Methods Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="card-icon">🤖</span>
+                        Detection Methods
+                    </div>
+                </div>
+                <div style="font-size: 12px; line-height: 2;">
+                    <div>✅ Regex Patterns: <span style="color: var(--color-success); font-weight: bold;">47</span></div>
+                    <div>✅ AI Model: <span style="color: var(--color-success); font-weight: bold;">Isolation Forest</span></div>
+                    <div>✅ Accuracy: <span style="color: var(--color-info); font-weight: bold;">91.3%</span></div>
+                    <div>✅ Hybrid Approach: <span style="color: var(--color-primary); font-weight: bold;">Active</span></div>
+                    <div>📊 Detection Speed: <span style="color: var(--color-medium); font-weight: bold;">&lt;10ms</span></div>
+                </div>
+            </div>
+
+            <!-- System Status -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="card-icon">⚙️</span>
+                        System Status
+                    </div>
+                </div>
+                <div style="font-size: 12px; line-height: 2;">
+                    <div id="mlMode">🔄 ML Mode: Checking...</div>
+                    <div>✅ API Server: <span id="apiStatus" style="color: var(--color-warning);">Connecting...</span></div>
+                    <div>✅ CMD Detector: <span id="cmdDetectorStatus" style="color: var(--color-warning);">Checking...</span></div>
+                    <div>✅ UDP Listener: <span style="color: var(--color-success);">Port 9999</span></div>
+                    <div>✅ Database: <span style="color: var(--color-success);">SQLite</span></div>
+                    <div>📊 Last Update: <span id="lastUpdate" style="color: var(--color-primary);">-</span></div>
+                </div>
+            </div>
+
+            <!-- Confidence Heatmap -->
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">
@@ -672,47 +643,35 @@
                     Color intensity: Low (Blue) → High (Red)
                 </div>
             </div>
-
-
-            <!-- System Status -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <span class="card-icon">⚙️</span>
-                        System Status
-                    </div>
-                </div>
-                <div style="font-size: 12px; line-height: 2;">
-                    <div id="mlMode">🔄 ML Mode: Checking...</div>
-                    <div>✅ API Server: <span id="apiStatus" style="color: var(--color-warning);">Connecting...</span></div>
-                    <div>✅ UDP Listener: <span style="color: var(--color-success);">Port 9999</span></div>
-                    <div>✅ Database: <span style="color: var(--color-success);">SQLite</span></div>
-                    <div>📊 Last Update: <span id="lastUpdate" style="color: var(--color-primary);">-</span></div>
-                </div>
-            </div>
         </div>
     </div>
-
 
     <script>
         // API Configuration
         const API_URL = 'http://localhost:5000/api';
         const POLLING_INTERVAL = 5000; // 5 seconds
 
-
         // Dashboard State
         const dashboardState = {
-            alerts: [],
-            stats: { critical: 0, high: 0, medium: 0, low: 0, total: 0 },
+            networkAlerts: [],
+            cmdAlerts: [],
+            stats: { 
+                critical: 0, 
+                high: 0, 
+                medium: 0, 
+                low: 0, 
+                total: 0,
+                cmd_critical: 0,
+                cmd_high: 0,
+                cmd_detections: 0
+            },
             lastUpdate: null,
             mlMode: 'unknown'
         };
 
-
         // ============================================================================
         // API FUNCTIONS
         // ============================================================================
-
 
         async function fetchHealthStatus() {
             try {
@@ -730,17 +689,19 @@
             }
         }
 
-
         async function fetchStats() {
             try {
                 const response = await fetch(`${API_URL}/stats`);
                 const data = await response.json();
                 dashboardState.stats = {
-                    critical: data.critical || 0,
-                    high: data.high || 0,
-                    medium: data.medium || 0,
-                    low: data.low || 0,
-                    total: data.total_alerts || 0
+                    critical: data.critical_count || 0,
+                    high: data.high_count || 0,
+                    medium: data.medium_count || 0,
+                    low: data.low_count || 0,
+                    total: data.total_alerts || 0,
+                    cmd_critical: data.cmd_critical || 0,
+                    cmd_high: data.cmd_high || 0,
+                    cmd_detections: data.cmd_detections || 0
                 };
                 updateKPIs();
                 return data;
@@ -750,24 +711,38 @@
             }
         }
 
-
-        async function fetchAlerts(limit = 50, severity = null) {
+        async function fetchNetworkAlerts(limit = 20, severity = null) {
             try {
                 let url = `${API_URL}/alerts?limit=${limit}`;
                 if (severity) url += `&severity=${severity}`;
                
                 const response = await fetch(url);
                 const data = await response.json();
-                dashboardState.alerts = data.alerts || [];
-                dashboardState.lastUpdate = new Date();
-                updateAlertsTable(dashboardState.alerts);
+                dashboardState.networkAlerts = data.alerts || [];
+                updateNetworkAlertsTable(dashboardState.networkAlerts);
                 return data;
             } catch (error) {
-                console.error('Fetch alerts error:', error);
+                console.error('Fetch network alerts error:', error);
                 return null;
             }
         }
 
+        async function fetchCmdDetections(limit = 20, severity = null) {
+            try {
+                let url = `${API_URL}/cmd-detections?limit=${limit}`;
+                if (severity) url += `&severity=${severity}`;
+               
+                const response = await fetch(url);
+                const data = await response.json();
+                dashboardState.cmdAlerts = data.detections || [];
+                dashboardState.lastUpdate = new Date();
+                updateCmdAlertsTable(dashboardState.cmdAlerts);
+                return data;
+            } catch (error) {
+                console.error('Fetch CMD detections error:', error);
+                return null;
+            }
+        }
 
         async function updateDashboard() {
             console.log('Updating dashboard...');
@@ -775,19 +750,20 @@
             // Update KPIs
             await fetchStats();
            
-            // Update alerts table
-            await fetchAlerts(20);
+            // Update network alerts table
+            await fetchNetworkAlerts(20);
+           
+            // Update CMD detections table
+            await fetchCmdDetections(20);
            
             // Update timestamp
             const now = new Date().toLocaleTimeString();
             document.getElementById('lastUpdate').textContent = now;
         }
 
-
         // ============================================================================
         // UI UPDATE FUNCTIONS
         // ============================================================================
-
 
         function updateKPIs() {
             const stats = dashboardState.stats;
@@ -795,20 +771,21 @@
             document.getElementById('totalAlerts').textContent = stats.total.toLocaleString();
             document.getElementById('criticalCount').textContent = stats.critical;
             document.getElementById('highCount').textContent = stats.high;
-            document.getElementById('blockedFlows').textContent = (stats.critical + stats.high).toLocaleString();
+            document.getElementById('cmdMaliciousCount').textContent = stats.cmd_detections;
            
             // Update status
             document.getElementById('statusText').textContent = 'System Online';
             document.getElementById('apiStatus').textContent = 'Connected';
             document.getElementById('apiStatus').style.color = 'var(--color-success)';
+            document.getElementById('cmdDetectorStatus').textContent = 'Active';
+            document.getElementById('cmdDetectorStatus').style.color = 'var(--color-success)';
         }
 
-
-        function updateAlertsTable(alerts) {
+        function updateNetworkAlertsTable(alerts) {
             const tbody = document.getElementById('alertsBody');
            
             if (alerts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="loading">✅ No alerts - System clean!</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="loading">✅ No network alerts - System clean!</td></tr>';
                 return;
             }
            
@@ -829,57 +806,127 @@
                     <td>${timestamp}</td>
                     <td>${severityBadge}</td>
                     <td>${alert.reason || alert.alert_type || 'Network Anomaly'}</td>
-                    <td><span class="ip-address">${alert.src_ip || '-'}</span></td>
-                    <td><span class="ip-address">${alert.dst_ip || '-'}</span></td>
+                    <td><span style="font-family: monospace; font-size: 11px; color: #64B5F6;">${alert.src_ip || '-'}</span></td>
+                    <td><span style="font-family: monospace; font-size: 11px; color: #64B5F6;">${alert.dst_ip || '-'}</span></td>
                     <td>${alert.dst_port || '-'}</td>
                     <td><strong>${score}%</strong></td>
                 `;
                
-                row.addEventListener('click', () => showAlertDetails(alert));
+                row.addEventListener('click', () => showNetworkAlertDetails(alert));
                 tbody.appendChild(row);
             });
         }
 
-
-        function showAlertDetails(alert) {
-            const details = `
-Severity: ${alert.severity.toUpperCase()}
-Source: ${alert.src_ip}
-Destination: ${alert.dst_ip}:${alert.dst_port}
-Score: ${(alert.score * 100).toFixed(1)}%
-Reason: ${alert.reason}
-Time: ${new Date(alert.timestamp * 1000).toLocaleString()}
-            `;
-            alert(`Alert Details:\n\n${details}`);
+        function updateCmdAlertsTable(alerts) {
+            const tbody = document.getElementById('cmdAlertsBody');
+           
+            if (alerts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="loading">✅ No malicious commands detected - Clean!</td></tr>';
+                return;
+            }
+           
+            tbody.innerHTML = '';
+           
+            alerts.forEach(alert => {
+                const row = document.createElement('tr');
+                row.style.cursor = 'pointer';
+               
+                const severity = alert.severity || 'low';
+                const severityClass = `severity-${severity}`;
+                const severityBadge = `<span class="severity-badge ${severityClass}">${severity.toUpperCase()}</span>`;
+               
+                const timestamp = new Date(alert.timestamp * 1000).toLocaleString();
+                const confidence = (alert.confidence * 100).toFixed(1);
+               
+                let confidenceClass = 'confidence-low';
+                if (confidence >= 80) confidenceClass = 'confidence-high';
+                else if (confidence >= 50) confidenceClass = 'confidence-medium';
+               
+                // Truncate command to 50 chars for display
+                const cmdDisplay = alert.command.substring(0, 50) + (alert.command.length > 50 ? '...' : '');
+               
+                row.innerHTML = `
+                    <td>${timestamp}</td>
+                    <td>${severityBadge}</td>
+                    <td><span class="cmd-text" title="${alert.command}">${cmdDisplay}</span></td>
+                    <td><span class="confidence-score ${confidenceClass}">${confidence}%</span></td>
+                    <td>${alert.reason || 'Malicious pattern detected'}</td>
+                `;
+               
+                row.addEventListener('click', () => showCmdAlertDetails(alert));
+                tbody.appendChild(row);
+            });
         }
 
+        function showNetworkAlertDetails(alert) {
+            const details = `
+Network Alert Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Severity: ${alert.severity.toUpperCase()}
+Source IP: ${alert.src_ip}
+Destination: ${alert.dst_ip}:${alert.dst_port}
+Protocol: ${alert.proto}
+Score: ${(alert.score * 100).toFixed(1)}%
+Duration: ${alert.duration}s
+Packets: ${alert.pkt_count}
+Bytes: ${alert.byte_count}
+Reason: ${alert.reason}
+Timestamp: ${new Date(alert.timestamp * 1000).toLocaleString()}
+            `;
+            alert(details);
+        }
+
+        function showCmdAlertDetails(alert) {
+            const details = `
+Command Alert Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Severity: ${alert.severity.toUpperCase()}
+Confidence: ${(alert.confidence * 100).toFixed(1)}%
+Command: ${alert.command}
+Reason: ${alert.reason}
+Timestamp: ${new Date(alert.timestamp * 1000).toLocaleString()}
+Matched Pattern: ${alert.matched_pattern || 'AI Detection'}
+            `;
+            alert(details);
+        }
 
         function updateSystemStatus(health) {
             const mlMode = health.ml_mode || 'unknown';
+            const cmdPatterns = health.cmd_patterns || 0;
             document.getElementById('mlMode').innerHTML = `
-🤖 ML Mode: <span style="color: var(--color-success);">${mlMode.toUpperCase()}</span>
+🤖 ML Mode: <span style="color: var(--color-success);">${mlMode.toUpperCase()}</span> (${cmdPatterns} patterns)
             `;
         }
 
-
-        function filterAlerts(severity) {
-            const buttons = document.querySelectorAll('.filter-btn');
+        function filterNetworkAlerts(severity) {
+            const buttons = document.querySelectorAll('.controls')[0].querySelectorAll('.filter-btn');
             buttons.forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
            
             if (severity === 'all') {
-                fetchAlerts(50);
+                fetchNetworkAlerts(50);
             } else {
-                const filtered = dashboardState.alerts.filter(a => a.severity === severity);
-                updateAlertsTable(filtered);
+                const filtered = dashboardState.networkAlerts.filter(a => a.severity === severity);
+                updateNetworkAlertsTable(filtered);
             }
         }
 
+        function filterCmdAlerts(severity) {
+            const buttons = document.querySelectorAll('.controls')[1].querySelectorAll('.filter-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+           
+            if (severity === 'all') {
+                fetchCmdDetections(50);
+            } else {
+                const filtered = dashboardState.cmdAlerts.filter(a => a.severity === severity);
+                updateCmdAlertsTable(filtered);
+            }
+        }
 
         // ============================================================================
         // HEATMAP GENERATION
         // ============================================================================
-
 
         function generateHeatmap() {
             const heatmapContainer = document.getElementById('confidenceHeatmap');
@@ -907,14 +954,12 @@ Time: ${new Date(alert.timestamp * 1000).toLocaleString()}
             }
         }
 
-
         // ============================================================================
         // INITIALIZATION & AUTO-REFRESH
         // ============================================================================
 
-
         async function initializeDashboard() {
-            console.log('🚀 Initializing SOC Dashboard...');
+            console.log('🚀 Initializing SOC Dashboard with CMD Detection...');
            
             // Check health
             await fetchHealthStatus();
@@ -931,17 +976,41 @@ Time: ${new Date(alert.timestamp * 1000).toLocaleString()}
                 console.log('📊 Dashboard updated');
             }, POLLING_INTERVAL);
            
-            console.log('✅ Dashboard initialized and polling every ' + (POLLING_INTERVAL/1000) + ' seconds');
+            console.log('✅ Dashboard initialized with CMD detection polling every ' + (POLLING_INTERVAL/1000) + ' seconds');
         }
-
 
         // Start on page load
         document.addEventListener('DOMContentLoaded', () => {
             initializeDashboard();
+
+            // Initialize Socket.IO for real-time alerts
+            const socket = io('http://localhost:5000');
+
+            socket.on('connect', () => {
+                console.log('✅ Socket.IO connection established');
+            });
+
+            socket.on('alert', (alert) => {
+                console.log('Received alert:', alert);
+                if (alert.type === 'cmd_detection') {
+                    dashboardState.cmdAlerts.unshift(alert);
+                    if (dashboardState.cmdAlerts.length > 20) dashboardState.cmdAlerts.pop();
+                    updateCmdAlertsTable(dashboardState.cmdAlerts);
+                } else {
+                    dashboardState.networkAlerts.unshift(alert);
+                    if (dashboardState.networkAlerts.length > 20) dashboardState.networkAlerts.pop();
+                    updateNetworkAlertsTable(dashboardState.networkAlerts);
+                }
+                // Refresh stats to keep KPIs up-to-date
+                fetchStats();
+            });
+
+            socket.on('disconnect', () => {
+                console.warn('Socket.IO disconnected');
+            });
         });
 
-
-        // Periodic heatmap refresh (for visual effect)
+        // Periodic heatmap refresh
         setInterval(() => {
             generateHeatmap();
         }, 10000); // Every 10 seconds

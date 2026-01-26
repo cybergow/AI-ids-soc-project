@@ -1,4 +1,4 @@
-from scapy.all import sniff
+from scapy.all import sniff, conf
 from scapy.layers.inet import IP, TCP
 import time
 import threading
@@ -68,5 +68,7 @@ def send_udp(feat, addr=('127.0.0.1',9999)):
 
 if __name__ == '__main__':
     print("Starting flow extractor. (May need root/admin for sniffing)")
+    print("Configuring for Layer 3 sniffing (no WinPcap required).")
+    conf.L3socket=True
     threading.Thread(target=flush_old_flows, args=(send_udp,), daemon=True).start()
     sniff(prn=packet_cb, store=False)  # optionally add iface="Ethernet" or your interface name
