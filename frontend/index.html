@@ -82,6 +82,47 @@
             font-weight: 600;
         }
 
+        .header-subtitle {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+        }
+
+        /* Navigation Bar */
+        .nav-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .nav-btn {
+            padding: 10px 16px;
+            background: rgba(33, 150, 243, 0.1);
+            border: 2px solid var(--color-primary);
+            color: var(--color-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all var(--transition);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-btn:hover {
+            background: var(--color-primary);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+        }
+
+        .nav-btn.active {
+            background: var(--color-primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+        }
+
         .status-indicator {
             display: flex;
             align-items: center;
@@ -347,16 +388,19 @@
             font-size: 12px;
             font-weight: 500;
             transition: all var(--transition);
+            text-decoration: none;
         }
 
         .filter-btn:hover, .btn:hover {
             background: var(--color-primary);
             border-color: var(--color-primary);
+            color: white;
         }
 
         .filter-btn.active {
             background: var(--color-primary);
             border-color: var(--color-primary);
+            color: white;
         }
 
         .loading {
@@ -397,6 +441,17 @@
             .table-container {
                 grid-column: span 2;
             }
+
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+
+            .nav-bar {
+                width: 100%;
+                justify-content: flex-start;
+            }
         }
 
         @media (max-width: 768px) {
@@ -418,6 +473,17 @@
                 padding: 15px;
                 flex-direction: column;
                 gap: 15px;
+            }
+
+            .nav-bar {
+                width: 100%;
+                flex-wrap: wrap;
+                justify-content: flex-start;
+            }
+
+            .nav-btn {
+                flex: 1;
+                min-width: 100px;
             }
         }
 
@@ -469,9 +535,26 @@
                 <div class="logo">🛡️</div>
                 <div>
                     <div class="header-title">SOC IDS/IPS Dashboard</div>
-                    <div style="font-size: 12px; color: var(--color-text-secondary);">AI-Based Threat Detection (Network + Command)</div>
+                    <div class="header-subtitle">AI-Based Threat Detection (Network + Command)</div>
                 </div>
             </div>
+            
+            <!-- Navigation Bar -->
+            <div class="nav-bar">
+                <a href="/" class="nav-btn active" id="dashboardBtn">
+                    <span>📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/system-logs" class="nav-btn" id="systemLogsBtn">
+                    <span>📋</span>
+                    <span>System Logs</span>
+                </a>
+                <a href="/cmd-history" class="nav-btn" id="cmdHistoryBtn">
+                    <span>🔍</span>
+                    <span>CMD History</span>
+                </a>
+            </div>
+
             <div class="status-indicator">
                 <span class="status-dot"></span>
                 <span id="statusText">Connecting...</span>
@@ -536,7 +619,9 @@
                         Network Alerts (Live)
                     </div>
                     <div class="controls">
-                        <button class="filter-btn active" onclick="filterNetworkAlerts('all')">All</button>
+                        <button class="filter-btn active" onclick="filterNetworkAlerts('traffic')">Traffic</button>
+                        <button class="filter-btn" onclick="filterNetworkAlerts('alerts')">Alerts</button>
+                        <button class="filter-btn" onclick="filterNetworkAlerts('all')">All</button>
                         <button class="filter-btn" onclick="filterNetworkAlerts('critical')">Critical</button>
                         <button class="filter-btn" onclick="filterNetworkAlerts('high')">High</button>
                     </div>
@@ -561,7 +646,7 @@
                 </table>
             </div>
 
-            <!-- CMD Detection Table (NEW) -->
+            <!-- CMD Detection Table -->
             <div class="card table-container" style="grid-column: span 2;">
                 <div class="card-header">
                     <div class="card-title">
@@ -622,7 +707,7 @@
                     <div id="mlMode">🔄 ML Mode: Checking...</div>
                     <div>✅ API Server: <span id="apiStatus" style="color: var(--color-warning);">Connecting...</span></div>
                     <div>✅ CMD Detector: <span id="cmdDetectorStatus" style="color: var(--color-warning);">Checking...</span></div>
-                    <div>✅ UDP Listener: <span style="color: var(--color-success);">Port 9999</span></div>
+                    <div>✅ Flow Capture: <span id="flowCaptureStatus" style="color: var(--color-warning);">Checking...</span></div>
                     <div>✅ Database: <span style="color: var(--color-success);">SQLite</span></div>
                     <div>📊 Last Update: <span id="lastUpdate" style="color: var(--color-primary);">-</span></div>
                 </div>
@@ -654,7 +739,11 @@
         // Dashboard State
         const dashboardState = {
             networkAlerts: [],
+            networkFlows: [],
             cmdAlerts: [],
+            networkViewMode: 'traffic',
+            networkSeverityFilter: 'all',
+            networkRenderTimer: null,
             stats: { 
                 critical: 0, 
                 high: 0, 
@@ -685,6 +774,49 @@
                 document.getElementById('statusText').textContent = 'Offline';
                 document.getElementById('apiStatus').textContent = 'Disconnected';
                 document.getElementById('apiStatus').style.color = 'var(--color-error)';
+                return null;
+            }
+        }
+
+        async function fetchNetworkStatus() {
+            try {
+                const response = await fetch(`${API_URL}/network-status`);
+                const data = await response.json();
+
+                const started = !!data.flow_extractor_started;
+                const err = data.flow_extractor_error;
+                const udpCount = data.udp_flows_received || 0;
+                const iface = data.flow_extractor_runtime_iface || data.flow_extractor_iface || 'auto';
+
+                let text = 'Disabled';
+                let color = 'var(--color-warning)';
+
+                if (data.flow_extractor_available && data.flow_extractor_enabled) {
+                    if (err) {
+                        text = `Error (${iface}): ${err}`;
+                        color = 'var(--color-error)';
+                    } else if (started) {
+                        text = `Running (${iface}) | flows: ${udpCount}`;
+                        color = 'var(--color-success)';
+                    } else {
+                        text = `Starting (${iface})...`;
+                        color = 'var(--color-warning)';
+                    }
+                }
+
+                const el = document.getElementById('flowCaptureStatus');
+                if (el) {
+                    el.textContent = text;
+                    el.style.color = color;
+                }
+
+                return data;
+            } catch (error) {
+                const el = document.getElementById('flowCaptureStatus');
+                if (el) {
+                    el.textContent = 'Unknown';
+                    el.style.color = 'var(--color-warning)';
+                }
                 return null;
             }
         }
@@ -727,6 +859,32 @@
             }
         }
 
+        async function fetchNetworkFlows(limit = 50) {
+            try {
+                const response = await fetch(`${API_URL}/network-flows?limit=${limit}`);
+                const data = await response.json();
+                dashboardState.networkFlows = data.flows || [];
+                scheduleNetworkTableRender();
+                return data;
+            } catch (error) {
+                console.error('Fetch network flows error:', error);
+                return null;
+            }
+        }
+
+        async function fetchNetworkAlertsOnly(limit = 50) {
+            try {
+                const response = await fetch(`${API_URL}/alerts?limit=${limit}`);
+                const data = await response.json();
+                dashboardState.networkAlerts = data.alerts || [];
+                scheduleNetworkTableRender();
+                return data;
+            } catch (error) {
+                console.error('Fetch network alerts error:', error);
+                return null;
+            }
+        }
+
         async function fetchCmdDetections(limit = 20, severity = null) {
             try {
                 let url = `${API_URL}/cmd-detections?limit=${limit}`;
@@ -749,9 +907,16 @@
            
             // Update KPIs
             await fetchStats();
+
+            // Capture diagnostics
+            await fetchNetworkStatus();
            
-            // Update network alerts table
-            await fetchNetworkAlerts(20);
+            // Update network traffic table
+            if (dashboardState.networkViewMode === 'alerts') {
+                await fetchNetworkAlertsOnly(100);
+            } else {
+                await fetchNetworkFlows(200);
+            }
            
             // Update CMD detections table
             await fetchCmdDetections(20);
@@ -785,7 +950,7 @@
             const tbody = document.getElementById('alertsBody');
            
             if (alerts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="loading">✅ No network alerts - System clean!</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="loading">✅ No network traffic captured yet</td></tr>';
                 return;
             }
            
@@ -801,11 +966,13 @@
                
                 const timestamp = new Date(alert.timestamp * 1000).toLocaleString();
                 const score = (alert.score * 100).toFixed(1);
+
+                const alertType = alert.is_anomaly ? 'Network Anomaly' : 'Network Flow';
                
                 row.innerHTML = `
                     <td>${timestamp}</td>
                     <td>${severityBadge}</td>
-                    <td>${alert.reason || alert.alert_type || 'Network Anomaly'}</td>
+                    <td>${alert.reason || alert.alert_type || alertType}</td>
                     <td><span style="font-family: monospace; font-size: 11px; color: #64B5F6;">${alert.src_ip || '-'}</span></td>
                     <td><span style="font-family: monospace; font-size: 11px; color: #64B5F6;">${alert.dst_ip || '-'}</span></td>
                     <td>${alert.dst_port || '-'}</td>
@@ -815,6 +982,27 @@
                 row.addEventListener('click', () => showNetworkAlertDetails(alert));
                 tbody.appendChild(row);
             });
+        }
+
+        function getCurrentNetworkRows() {
+            const mode = dashboardState.networkViewMode;
+            const severity = dashboardState.networkSeverityFilter;
+            const rows = (mode === 'alerts') ? dashboardState.networkAlerts : dashboardState.networkFlows;
+
+            let filtered = rows;
+            if (severity !== 'all') {
+                filtered = rows.filter(r => (r.severity || '').toLowerCase() === severity);
+            }
+
+            return filtered.slice(0, 100);
+        }
+
+        function scheduleNetworkTableRender() {
+            if (dashboardState.networkRenderTimer) return;
+            dashboardState.networkRenderTimer = setTimeout(() => {
+                dashboardState.networkRenderTimer = null;
+                updateNetworkAlertsTable(getCurrentNetworkRows());
+            }, 200);
         }
 
         function updateCmdAlertsTable(alerts) {
@@ -870,7 +1058,7 @@ Score: ${(alert.score * 100).toFixed(1)}%
 Duration: ${alert.duration}s
 Packets: ${alert.pkt_count}
 Bytes: ${alert.byte_count}
-Reason: ${alert.reason}
+Reason: ${alert.reason || '-'}
 Timestamp: ${new Date(alert.timestamp * 1000).toLocaleString()}
             `;
             alert(details);
@@ -902,13 +1090,23 @@ Matched Pattern: ${alert.matched_pattern || 'AI Detection'}
             const buttons = document.querySelectorAll('.controls')[0].querySelectorAll('.filter-btn');
             buttons.forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
-           
-            if (severity === 'all') {
-                fetchNetworkAlerts(50);
-            } else {
-                const filtered = dashboardState.networkAlerts.filter(a => a.severity === severity);
-                updateNetworkAlertsTable(filtered);
+
+            if (severity === 'traffic') {
+                dashboardState.networkViewMode = 'traffic';
+                dashboardState.networkSeverityFilter = 'all';
+                fetchNetworkFlows(200);
+                return;
             }
+
+            if (severity === 'alerts') {
+                dashboardState.networkViewMode = 'alerts';
+                dashboardState.networkSeverityFilter = 'all';
+                fetchNetworkAlertsOnly(100);
+                return;
+            }
+
+            dashboardState.networkSeverityFilter = severity;
+            scheduleNetworkTableRender();
         }
 
         function filterCmdAlerts(severity) {
@@ -955,11 +1153,36 @@ Matched Pattern: ${alert.matched_pattern || 'AI Detection'}
         }
 
         // ============================================================================
+        // NAVIGATION BUTTON HIGHLIGHTING
+        // ============================================================================
+
+        function highlightCurrentPage() {
+            const currentPath = window.location.pathname;
+            
+            // Remove active class from all nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class based on current path
+            if (currentPath === '/system-logs') {
+                document.getElementById('systemLogsBtn').classList.add('active');
+            } else if (currentPath === '/cmd-history') {
+                document.getElementById('cmdHistoryBtn').classList.add('active');
+            } else {
+                document.getElementById('dashboardBtn').classList.add('active');
+            }
+        }
+
+        // ============================================================================
         // INITIALIZATION & AUTO-REFRESH
         // ============================================================================
 
         async function initializeDashboard() {
             console.log('🚀 Initializing SOC Dashboard with CMD Detection...');
+           
+            // Highlight current page
+            highlightCurrentPage();
            
             // Check health
             await fetchHealthStatus();
@@ -996,13 +1219,23 @@ Matched Pattern: ${alert.matched_pattern || 'AI Detection'}
                     dashboardState.cmdAlerts.unshift(alert);
                     if (dashboardState.cmdAlerts.length > 20) dashboardState.cmdAlerts.pop();
                     updateCmdAlertsTable(dashboardState.cmdAlerts);
-                } else {
+                } else if (alert && (alert.src_ip || alert.dst_ip) && !alert.command) {
                     dashboardState.networkAlerts.unshift(alert);
-                    if (dashboardState.networkAlerts.length > 20) dashboardState.networkAlerts.pop();
-                    updateNetworkAlertsTable(dashboardState.networkAlerts);
+                    if (dashboardState.networkAlerts.length > 200) dashboardState.networkAlerts.pop();
+                    if (dashboardState.networkViewMode === 'alerts') {
+                        scheduleNetworkTableRender();
+                    }
                 }
                 // Refresh stats to keep KPIs up-to-date
                 fetchStats();
+            });
+
+            socket.on('network_flow', (flow) => {
+                dashboardState.networkFlows.unshift(flow);
+                if (dashboardState.networkFlows.length > 500) dashboardState.networkFlows.pop();
+                if (dashboardState.networkViewMode === 'traffic') {
+                    scheduleNetworkTableRender();
+                }
             });
 
             socket.on('disconnect', () => {
