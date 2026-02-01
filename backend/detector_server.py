@@ -50,6 +50,13 @@ try:
 except ImportError:
     AI_TRAINER_AVAILABLE = False
 
+# ✅ OPTIONAL GNN FLOW SCORER
+try:
+    from gnn_flow_model import GNNFlowScorer
+    GNN_AVAILABLE = True
+except Exception:
+    GNN_AVAILABLE = False
+
 # ============================================================================
 # LOGGING CONFIGURATION
 # ============================================================================
@@ -71,6 +78,17 @@ logger.info("=" * 80)
 ml_mode = "none"
 scaler = None
 model = None
+
+gnn_scorer = None
+if GNN_AVAILABLE:
+    try:
+        gnn_scorer = GNNFlowScorer()
+        if gnn_scorer.is_ready:
+            logger.info("✅ GNN flow scorer loaded")
+        else:
+            logger.warning("⚠️  GNN flow scorer not ready (model/config missing)")
+    except Exception as e:
+        logger.warning(f"⚠️  GNN flow scorer failed to initialize: {e}")
 
 # Initialize Hybrid CMD Detector (Regex + AI)
 cmd_detector = None
@@ -647,7 +665,11 @@ def stat_score_from_feat(feat):
 
 def ml_score_from_feat(feat):
     """Score network flow using available backend"""
-    return stat_score_from_feat(feat), False
+    if gnn_scorer and gnn_scorer.is_ready:
+        score, is_attack, reason = gnn_scorer.score_flow(feat)
+        if score is not None:
+            return float(score), bool(is_attack), reason
+    return stat_score_from_feat(feat), False, None
 
 
 def classify_severity(score, is_anomaly, reason):
@@ -977,7 +999,7 @@ def udp_listener(host='0.0.0.0', port=9999):
                 incoming_reason = feat.get('reason', '')
                 incoming_severity = str(feat.get('severity', '') or '').strip().lower()
 
-                score, is_attack = ml_score_from_feat(feat)
+                score, is_attack, ml_reason = ml_score_from_feat(feat)
                 if incoming_score is not None:
                     try:
                         score = float(incoming_score)
@@ -991,7 +1013,8 @@ def udp_listener(host='0.0.0.0', port=9999):
                 elif incoming_score is not None and score >= 0.7:
                     is_attack = True
 
-                severity = incoming_severity or classify_severity(score, is_attack, incoming_reason)
+                reason = incoming_reason or (ml_reason or '')
+                severity = incoming_severity or classify_severity(score, is_attack, reason)
                  
                 flow_event = {
                     'key': feat.get('key'),
@@ -1008,7 +1031,7 @@ def udp_listener(host='0.0.0.0', port=9999):
                     'byte_count': feat.get('byte_count'),
                     'duration': feat.get('duration'),
                     'mean_pkt_size': feat.get('mean_pkt_size'),
-                    'reason': incoming_reason,
+                    'reason': reason,
                     'severity': severity
                 }
                  
@@ -1021,7 +1044,7 @@ def udp_listener(host='0.0.0.0', port=9999):
                 if is_attack:
                     event = {
                         **flow_event,
-                        'reason': (incoming_reason or 'ML_anomaly').strip()
+                        'reason': (reason or 'ML_anomaly').strip()
                     }
                     persist_alert(event)
                     socketio.emit('alert', event)

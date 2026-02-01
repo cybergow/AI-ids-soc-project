@@ -13,5 +13,7 @@ eventlet
 matplotlib
 seaborn
 torch
+torch-geometric
+networkx
 wmi
 pywin32
