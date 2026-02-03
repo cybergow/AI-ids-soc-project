@@ -964,8 +964,8 @@ def udp_listener(host='0.0.0.0', port=9999):
                  
                 now_ts = time.time()
                 
-                # Port scan detection
-                scan_detected, scan_reason, scan_score = detect_portscan(feat)
+                # Port scan detection (temporarily disabled to stop repeated alerts)
+                scan_detected, scan_reason, scan_score = False, None, 0
                 
                 if scan_detected:
                     scan_event = {
