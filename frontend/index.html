@@ -246,6 +246,89 @@
             overflow-y: auto;
         }
 
+        /* Model Metrics */
+        .model-metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .model-metrics-table thead {
+            background: rgba(0, 188, 212, 0.12);
+            position: sticky;
+            top: 0;
+        }
+
+        .model-metrics-table th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--color-border);
+            color: var(--color-info);
+        }
+
+        .model-metrics-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--color-border);
+            vertical-align: middle;
+        }
+
+        .model-metrics-table tr:hover {
+            background: rgba(0, 188, 212, 0.05);
+        }
+
+        .metrics-meta {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .metric-note {
+            font-size: 11px;
+            color: var(--color-text-secondary);
+        }
+
+        .metric-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid transparent;
+        }
+
+        .metric-good {
+            background: rgba(76, 175, 80, 0.15);
+            color: var(--color-success);
+            border-color: rgba(76, 175, 80, 0.4);
+        }
+
+        .metric-warn {
+            background: rgba(255, 152, 0, 0.15);
+            color: var(--color-warning);
+            border-color: rgba(255, 152, 0, 0.4);
+        }
+
+        .metric-bad {
+            background: rgba(244, 67, 54, 0.15);
+            color: var(--color-error);
+            border-color: rgba(244, 67, 54, 0.4);
+        }
+
+        .metric-neutral {
+            background: rgba(176, 180, 184, 0.12);
+            color: var(--color-text-secondary);
+            border-color: rgba(176, 180, 184, 0.3);
+        }
+
+        .model-name {
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
         .alerts-table {
             width: 100%;
             border-collapse: collapse;
@@ -646,6 +729,39 @@
                 </table>
             </div>
 
+            <!-- Model Comparison Metrics -->
+            <div class="card table-container" style="grid-column: span 2;">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="card-icon">📈</span>
+                        Model Comparison Metrics
+                    </div>
+                    <div class="metrics-meta">
+                        <span class="metric-badge metric-neutral" id="metricsWindow">Window: --</span>
+                        <span class="metric-badge metric-neutral" id="metricsSamples">Labeled: --</span>
+                        <span class="metric-note" id="metricsSources">Sources: --</span>
+                    </div>
+                </div>
+                <table class="model-metrics-table" id="modelMetricsTable">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>TPR</th>
+                            <th>FPR</th>
+                            <th>Confidence</th>
+                            <th>Consistency</th>
+                            <th>Unique</th>
+                            <th>Samples</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modelMetricsBody">
+                        <tr>
+                            <td colspan="7" class="loading">⏳ Loading model metrics...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
             <!-- CMD Detection Table -->
             <div class="card table-container" style="grid-column: span 2;">
                 <div class="card-header">
@@ -741,6 +857,7 @@
             networkAlerts: [],
             networkFlows: [],
             cmdAlerts: [],
+            modelMetrics: null,
             networkViewMode: 'traffic',
             networkSeverityFilter: 'all',
             networkRenderTimer: null,
@@ -774,6 +891,20 @@
                 document.getElementById('statusText').textContent = 'Offline';
                 document.getElementById('apiStatus').textContent = 'Disconnected';
                 document.getElementById('apiStatus').style.color = 'var(--color-error)';
+                return null;
+            }
+        }
+
+        async function fetchModelMetrics(windowSize = 200) {
+            try {
+                const response = await fetch(`${API_URL}/model-metrics?window=${windowSize}`);
+                const data = await response.json();
+                dashboardState.modelMetrics = data;
+                updateModelMetricsTable(data);
+                return data;
+            } catch (error) {
+                console.error('Fetch model metrics error:', error);
+                updateModelMetricsTable(null);
                 return null;
             }
         }
@@ -920,6 +1051,9 @@
            
             // Update CMD detections table
             await fetchCmdDetections(20);
+
+            // Update model metrics table
+            await fetchModelMetrics();
            
             // Update timestamp
             const now = new Date().toLocaleTimeString();
@@ -980,6 +1114,110 @@
                 `;
                
                 row.addEventListener('click', () => showNetworkAlertDetails(alert));
+                tbody.appendChild(row);
+            });
+        }
+
+        function formatPercent(value, decimals = 1) {
+            if (value === null || value === undefined || Number.isNaN(value)) {
+                return '—';
+            }
+            return `${(value * 100).toFixed(decimals)}%`;
+        }
+
+        function formatNumber(value, decimals = 2) {
+            if (value === null || value === undefined || Number.isNaN(value)) {
+                return '—';
+            }
+            return Number(value).toFixed(decimals);
+        }
+
+        function metricClass(value, invert = false) {
+            if (value === null || value === undefined || Number.isNaN(value)) {
+                return 'metric-neutral';
+            }
+            const score = invert ? 1 - value : value;
+            if (score >= 0.8) return 'metric-good';
+            if (score >= 0.6) return 'metric-warn';
+            return 'metric-bad';
+        }
+
+        function updateMetricsMeta(snapshot) {
+            const windowEl = document.getElementById('metricsWindow');
+            const samplesEl = document.getElementById('metricsSamples');
+            const sourcesEl = document.getElementById('metricsSources');
+
+            if (!windowEl || !samplesEl || !sourcesEl) return;
+
+            if (!snapshot) {
+                windowEl.textContent = 'Window: --';
+                samplesEl.textContent = 'Labeled: --';
+                sourcesEl.textContent = 'Sources: --';
+                windowEl.className = 'metric-badge metric-neutral';
+                samplesEl.className = 'metric-badge metric-neutral';
+                return;
+            }
+
+            windowEl.textContent = `Window: ${snapshot.window || '--'}`;
+            samplesEl.textContent = `Labeled: ${snapshot.samples_total || 0} (A:${snapshot.samples_attacks || 0} / B:${snapshot.samples_benign || 0})`;
+            const sources = snapshot.label_sources || {};
+            const sourcesText = Object.keys(sources).length
+                ? Object.entries(sources).map(([key, val]) => `${key}:${val}`).join(', ')
+                : '--';
+            sourcesEl.textContent = `Sources: ${sourcesText}`;
+
+            const hasLabels = (snapshot.samples_total || 0) > 0;
+            windowEl.className = `metric-badge ${hasLabels ? 'metric-good' : 'metric-neutral'}`;
+            samplesEl.className = `metric-badge ${hasLabels ? 'metric-good' : 'metric-neutral'}`;
+        }
+
+        function updateModelMetricsTable(snapshot) {
+            const tbody = document.getElementById('modelMetricsBody');
+            if (!tbody) return;
+
+            updateMetricsMeta(snapshot);
+
+            if (!snapshot || !snapshot.models || Object.keys(snapshot.models).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="loading">⚠️ No labeled flows yet. Add ground_truth labels to compute metrics.</td></tr>';
+                return;
+            }
+
+            const modelRows = [
+                { key: 'isolation_forest', label: 'Isolation Forest' },
+                { key: 'random_forest', label: 'Random Forest' },
+                { key: 'gnn', label: 'GNN' }
+            ];
+
+            tbody.innerHTML = '';
+            modelRows.forEach(({ key, label }) => {
+                const data = snapshot.models[key] || {};
+                const status = data.status || 'unknown';
+                const tpr = data.tpr;
+                const fpr = data.fpr;
+                const confidence = data.confidence;
+                const consistency = data.consistency;
+                const uniqueRate = data.unique_rate;
+                const samples = data.samples ?? 0;
+
+                const isReady = status === 'ready';
+                const statusBadge = isReady 
+                    ? '' 
+                    : `<span class="metric-badge metric-neutral" style="font-size: 9px; margin-left: 5px;">OFFLINE</span>`;
+
+                const row = document.createElement('tr');
+                if (!isReady && samples === 0) {
+                    row.style.opacity = '0.6';
+                }
+
+                row.innerHTML = `
+                    <td class="model-name">${label}${statusBadge}</td>
+                    <td><span class="metric-badge ${isReady ? metricClass(tpr) : 'metric-neutral'}">${formatPercent(tpr)}</span></td>
+                    <td><span class="metric-badge ${isReady ? metricClass(fpr, true) : 'metric-neutral'}">${formatPercent(fpr)}</span></td>
+                    <td><span class="metric-badge ${isReady ? metricClass(confidence) : 'metric-neutral'}">${formatPercent(confidence)}</span></td>
+                    <td><span class="metric-badge ${isReady ? metricClass(consistency) : 'metric-neutral'}">${formatPercent(consistency)}</span></td>
+                    <td><span class="metric-badge ${isReady ? metricClass(uniqueRate) : 'metric-neutral'}">${formatPercent(uniqueRate)}</span></td>
+                    <td>${samples}</td>
+                `;
                 tbody.appendChild(row);
             });
         }

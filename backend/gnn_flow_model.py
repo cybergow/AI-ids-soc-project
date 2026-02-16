@@ -50,9 +50,9 @@ COLUMN_ALIASES = {
 DEFAULT_CONFIG = {
     "features": FEATURE_COLUMNS,
     "k_neighbors": 8,
-    "threshold": 0.6,
-    "min_nodes": 20,
-    "window_size": 200,
+    "threshold": 0.95,
+    "min_nodes": 5,
+    "window_size": 120,
     "hidden_dim": 32,
     "dropout": 0.2,
 }
