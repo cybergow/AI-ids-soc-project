@@ -1,0 +1,8 @@
+📊 PRESENTATION METRICS (Last 200 Flows)
+   Attacks: 110 | Benign: 90
+
+Model                | TPR (Recall)    | FPR            
+------------------------------------------------------------
+Random Forest        |  97.3%          |   0.0%
+Isolation Forest     |  65.5%          |   0.0%
+GNN                  |  58.2%          |   0.0%

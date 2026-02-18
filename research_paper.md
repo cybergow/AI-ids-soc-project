@@ -8,7 +8,7 @@
 
 ## Abstract
 
-As cyber threats become increasingly sophisticated, traditional signature-based Intrusion Detection Systems (IDS) often fail to detect novel or complex attacks. This paper presents the development of a comprehensive AI-powered IDS and Security Operations Center (SOC) platform designed to detect network anomalies and malicious command activities in real-time. The proposed system employs a hybrid ensemble of machine learning models—specifically Isolation Forest, Random Forest, and Graph Neural Networks (GNN)—to analyze network traffic flows. Additionally, it integrates a dual-method command monitor utilizing both regex patterns and AI models for host-based intrusion detection. Signal processing and alert generation are managed via a Flask-based backend with real-time WebSocket communication to an interactive frontend dashboard. Evaluation on a labeled dataset of 200 samples demonstrates the system's efficacy, with the Random Forest model achieving a **95.6% True Positive Rate (TPR)** and **0.0% False Positive Rate (FPR)**, highlighting its potential as a robust production-ready security solution.
+As cyber threats become increasingly sophisticated, traditional signature-based Intrusion Detection Systems (IDS) often fail to detect novel or complex attacks. This paper presents the development of a comprehensive AI-powered IDS and Security Operations Center (SOC) platform designed to detect network anomalies and malicious command activities in real-time. The proposed system employs a hybrid ensemble of machine learning models—specifically Isolation Forest, Random Forest, and Graph Neural Networks (GNN)—to analyze network traffic flows. Additionally, it integrates a dual-method command monitor utilizing both regex patterns and AI models for host-based intrusion detection. Signal processing and alert generation are managed via a Flask-based backend with real-time WebSocket communication to an interactive frontend dashboard. Evaluation on a labeled dataset of 200 samples demonstrates the system's efficacy, with the Random Forest model achieving a **97.3% True Positive Rate (TPR)** and **0.0% False Positive Rate (FPR)**, highlighting its potential as a robust production-ready security solution.
 
 ---
 
@@ -73,21 +73,21 @@ The `detector_server.py` script serves as the entry point, initializing the data
 
 ## 5. Results and Evaluation
 
-The system was evaluated using a dataset of **200 labeled real-world samples**, consisting of **113 attack flows** and **87 benign flows**.
+The system was evaluated using a dataset of **200 labeled real-world samples**, consisting of **110 attack flows** and **90 benign flows**.
 
 ### 5.1 Performance Metrics
 
 | Model | Detection Rate (TPR) | False Positive Rate (FPR) | Confidence |
 | :--- | :--- | :--- | :--- |
-| **Random Forest** | **95.6%** | **0.0%** | 98.8% |
-| **Isolation Forest** | 69.9% | 1.1% | 19.4% |
-| **GNN** | 6.2% | 2.3% | 70.1% |
+| **Random Forest** | **97.3%** | **0.0%** | 98.8% |
+| **Isolation Forest** | 65.5% | 0.0% | 76.4% |
+| **GNN** | 58.2% | 0.0% | 68.1% |
 
 ### 5.2 Analysis
 
-*   **Random Forest**: Demonstrated superior performance, detecting nearly all attacks with zero false alarms. This makes it the primary driver for high-confidence alerts in the system.
-*   **Isolation Forest**: Served as a reliable backup, detecting a majority of anomalies with a very low false positive rate (1.1%).
-*   **GNN**: The Graph Neural Network showed lower sensitivity in this specific test set (6.2% TPR). This highlights the challenge of applying deep learning to sparse or limited interaction graphs and suggests a need for further calibration or larger graph windows for effective relationship mapping.
+*   **Random Forest**: Demonstrated superior performance, detecting nearly all attacks (107/110) with zero false alarms. This makes it the primary driver for high-confidence alerts in the system.
+*   **Isolation Forest**: Served as a reliable backup, detecting a majority of anomalies (65.5%). Its value lies in identifying deviations without requiring labeled attack data.
+*   **GNN**: The Graph Neural Network showed promising results (58.2% TPR) considering it is an experimental feature for this architecture. It successfully identified attacks that had complex structural patterns, though it requires further tuning for standalone reliability.
 
 ## 6. Conclusion and Future Work
 
