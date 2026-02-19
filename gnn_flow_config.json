@@ -1,0 +1,16 @@
+{
+  "features": [
+    "duration",
+    "pkt_count",
+    "byte_count",
+    "src2dst_pkts",
+    "dst2src_pkts",
+    "mean_pkt_size"
+  ],
+  "k_neighbors": 8,
+  "threshold": 0.3,
+  "min_nodes": 5,
+  "window_size": 120,
+  "hidden_dim": 32,
+  "dropout": 0.2
+}

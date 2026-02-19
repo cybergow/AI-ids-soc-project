@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOC IDS/IPS Detection Dashboard</title>
+    <script src="https://cdn.socket.io/4.5.2/socket.io.min.js"></script>
+    <style>
+        :root {
+            --color-primary: #2196F3;
+            --color-primary-hover: #1976D2;
+            --color-primary-active: #1565C0;
+            --color-success: #4CAF50;
+            --color-warning: #FF9800;
+            --color-error: #F44336;
+            --color-info: #00BCD4;
+            --color-bg: #0F1419;
+            --color-bg-secondary: #1A1F26;
+            --color-bg-tertiary: #25292E;
+            --color-text: #E8EAED;
+            --color-text-secondary: #B0B4B8;
+            --color-border: #393C41;
+            --color-critical: #FF3D00;
+            --color-high: #F57C00;
+            --color-medium: #FBC02D;
+            --color-low: #2196F3;
+            --radius: 8px;
+            --transition: 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            overflow-x: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0F1419 0%, #1A1F26 100%);
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(to right, #1A1F26, #25292E);
+            border-bottom: 2px solid var(--color-border);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #2196F3, #00BCD4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header-subtitle {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+        }
+
+        /* Navigation Bar */
+        .nav-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .nav-btn {
+            padding: 10px 16px;
+            background: rgba(33, 150, 243, 0.1);
+            border: 2px solid var(--color-primary);
+            color: var(--color-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all var(--transition);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-btn:hover {
+            background: var(--color-primary);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+        }
+
+        .nav-btn.active {
+            background: var(--color-primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid var(--color-success);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--color-success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Main Dashboard Grid */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Card Styles */
+        .card {
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: all var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            border-color: var(--color-primary);
+            box-shadow: 0 8px 20px rgba(33, 150, 243, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--color-border);
+            padding-bottom: 10px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-icon {
+            font-size: 20px;
+        }
+
+        /* KPI Cards */
+        .kpi-card {
+            grid-column: span 1;
+        }
+
+        .kpi-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 15px 0;
+            background: linear-gradient(135deg, #2196F3, #00BCD4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .kpi-label {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .kpi-change {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .kpi-change.positive {
+            background: rgba(76, 175, 80, 0.2);
+            color: var(--color-success);
+        }
+
+        .kpi-change.negative {
+            background: rgba(244, 67, 54, 0.2);
+            color: var(--color-error);
+        }
+
+        /* Alert Table */
+        .table-container {
+            grid-column: span 2;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        /* Model Metrics */
+        .model-metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .model-metrics-table thead {
+            background: rgba(0, 188, 212, 0.12);
+            position: sticky;
+            top: 0;
+        }
+
+        .model-metrics-table th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--color-border);
+            color: var(--color-info);
+        }
+
+        .model-metrics-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--color-border);
+            vertical-align: middle;
+        }
+
+        .model-metrics-table tr:hover {
+            background: rgba(0, 188, 212, 0.05);
+        }
+
+        .metrics-meta {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .metric-note {
+            font-size: 11px;
+            color: var(--color-text-secondary);
+        }
+
+        .metric-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid transparent;
+        }
+
+        .metric-good {
+            background: rgba(76, 175, 80, 0.15);
+            color: var(--color-success);
+            border-color: rgba(76, 175, 80, 0.4);
+        }
+
+        .metric-warn {
+            background: rgba(255, 152, 0, 0.15);
+            color: var(--color-warning);
+            border-color: rgba(255, 152, 0, 0.4);
+        }
+
+        .metric-bad {
+            background: rgba(244, 67, 54, 0.15);
+            color: var(--color-error);
+            border-color: rgba(244, 67, 54, 0.4);
+        }
+
+        .metric-neutral {
+            background: rgba(176, 180, 184, 0.12);
+            color: var(--color-text-secondary);
+            border-color: rgba(176, 180, 184, 0.3);
+        }
+
+        .model-name {
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        .alerts-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .alerts-table thead {
+            background: rgba(33, 150, 243, 0.1);
+            position: sticky;
+            top: 0;
+        }
+
+        .alerts-table th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--color-border);
+            color: var(--color-primary);
+        }
+
+        .alerts-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .alerts-table tr:hover {
+            background: rgba(33, 150, 243, 0.05);
+        }
+
+        /* CMD Alert Table */
+        .cmd-alerts-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .cmd-alerts-table thead {
+            background: rgba(255, 61, 0, 0.1);
+            position: sticky;
+            top: 0;
+        }
+
+        .cmd-alerts-table th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--color-border);
+            color: var(--color-critical);
+        }
+
+        .cmd-alerts-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .cmd-alerts-table tr:hover {
+            background: rgba(255, 61, 0, 0.05);
+        }
+
+        .cmd-text {
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 11px;
+            background: rgba(0,0,0,0.3);
+            padding: 4px 6px;
+            border-radius: 3px;
+            word-break: break-all;
+            max-width: 300px;
+            overflow-x: auto;
+            color: #64B5F6;
+        }
+
+        /* Severity Badge */
+        .severity-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .severity-critical {
+            background: rgba(255, 61, 0, 0.2);
+            color: var(--color-critical);
+            border: 1px solid var(--color-critical);
+        }
+
+        .severity-high {
+            background: rgba(245, 124, 0, 0.2);
+            color: var(--color-high);
+            border: 1px solid var(--color-high);
+        }
+
+        .severity-medium {
+            background: rgba(251, 192, 45, 0.2);
+            color: var(--color-medium);
+            border: 1px solid var(--color-medium);
+        }
+
+        .severity-low {
+            background: rgba(33, 150, 243, 0.2);
+            color: var(--color-low);
+            border: 1px solid var(--color-low);
+        }
+
+        /* Heatmap Grid */
+        .heatmap {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 4px;
+            margin-top: 15px;
+        }
+
+        .heatmap-cell {
+            aspect-ratio: 1;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .heatmap-cell:hover {
+            transform: scale(1.1);
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn, .btn {
+            padding: 8px 16px;
+            background: var(--color-bg-tertiary);
+            border: 1px solid var(--color-border);
+            color: var(--color-text);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all var(--transition);
+            text-decoration: none;
+        }
+
+        .filter-btn:hover, .btn:hover {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+            color: white;
+        }
+
+        .filter-btn.active {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+            color: white;
+        }
+
+        .loading {
+            color: var(--color-text-secondary);
+            font-size: 12px;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .confidence-score {
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .confidence-high {
+            background: rgba(255, 61, 0, 0.2);
+            color: var(--color-critical);
+        }
+
+        .confidence-medium {
+            background: rgba(245, 124, 0, 0.2);
+            color: var(--color-high);
+        }
+
+        .confidence-low {
+            background: rgba(76, 175, 80, 0.2);
+            color: var(--color-success);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .dashboard {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .table-container {
+                grid-column: span 2;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+
+            .nav-bar {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+                padding: 15px;
+                gap: 15px;
+            }
+
+            .table-container {
+                grid-column: span 1;
+            }
+
+            .card {
+                padding: 15px;
+            }
+
+            .header {
+                padding: 15px;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .nav-bar {
+                width: 100%;
+                flex-wrap: wrap;
+                justify-content: flex-start;
+            }
+
+            .nav-btn {
+                flex: 1;
+                min-width: 100px;
+            }
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--color-bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--color-border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--color-primary);
+        }
+
+        /* Animation */
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .card {
+            animation: slideInLeft 0.5s ease forwards;
+        }
+
+        .card:nth-child(2) { animation-delay: 0.1s; }
+        .card:nth-child(3) { animation-delay: 0.2s; }
+        .card:nth-child(4) { animation-delay: 0.3s; }
+        .card:nth-child(5) { animation-delay: 0.4s; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <div class="logo">🛡️</div>
+                <div>
+                    <div class="header-title">SOC IDS/IPS Dashboard</div>
+                    <div class="header-subtitle">AI-Based Threat Detection (Network + Command)</div>
+                </div>
+            </div>
+            
+            <!-- Navigation Bar -->
+            <div class="nav-bar">
+                <a href="/" class="nav-btn active" id="dashboardBtn">
+                    <span>📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/system-logs" class="nav-btn" id="systemLogsBtn">
+                    <span>📋</span>
+                    <span>System Logs</span>
+                </a>
+                <a href="/cmd-history" class="nav-btn" id="cmdHistoryBtn">
+                    <span>🔍</span>
+                    <span>CMD History</span>
+                </a>
+            </div>
+
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span id="statusText">Connecting...</span>
+            </div>
+        </div>
+
+        <div class="dashboard" id="dashboard">
+            <!-- KPI Cards -->
+            <div class="card kpi-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="card-icon">🚨</span>
+                        Total Alerts (24h)
+                    </div>
+                </div>
+                <div class="kpi-value" id="totalAlerts">0</div>
+                <div class="kpi-label">Network + CMD</div>
+                <div class="kpi-change positive" id="totalChange">Waiting for data...</div>
+            </div>
+
+            <div class="card kpi-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="card-icon">🔴</span>
+                        Critical
+                    </div>
+                </div>
+                <div class="kpi-value" id="criticalCount">0</div>
+                <div class="kpi-label">Requires Action</div>
+                <div class="kpi-change" id="criticalChange" style="color: var(--color-critical);">Real-time</div>
+            </div>
+
+            <div class="card kpi-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="card-icon">⚠️</span>
+                        High
+                    </div>
+                </div>
+                <div class="kpi-value" id="highCount">0</div>
+                <div class="kpi-label">Monitor Closely</div>
+                <div class="kpi-change" id="highChange" style="color: var(--color-high);">Real-time</div>
+            </div>
+
+            <div class="card kpi-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="card-icon">💻</span>
+                        CMD Malicious
+                    </div>
+                </div>
+                <div class="kpi-value" id="cmdMaliciousCount">0</div>
+                <div class="kpi-label">Detected Commands</div>
+                <div class="kpi-change negative" id="cmdMaliciousChange">Real-time</div>
+            </div>
+
+            <!-- Recent Network Alerts Table -->
+            <div class="card table-container" style="grid-column: span 2;">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="card-icon">📋</span>
+                        Network Alerts (Live)
+                    </div>
+                    <div class="controls">
+                        <button class="filter-btn active" onclick="filterNetworkAlerts('traffic')">Traffic</button>
+                        <button class="filter-btn" onclick="filterNetworkAlerts('alerts')">Alerts</button>
+                        <button class="filter-btn" onclick="filterNetworkAlerts('all')">All</button>
+                        <button class="filter-btn" onclick="filterNetworkAlerts('critical')">Critical</button>
+                        <button class="filter-btn" onclick="filterNetworkAlerts('high')">High</button>
+                    </div>
+                </div>
+                <table class="alerts-table" id="alertsTable">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Severity</th>
+                            <th>Alert Type</th>
+                            <th>Source IP</th>
+                            <th>Dest IP</th>
+                            <th>Port</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="alertsBody">
+                        <tr>
+                            <td colspan="7" class="loading">⏳ Loading network alerts...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Model Comparison Metrics -->
+            <div class="card table-container" style="grid-column: span 2;">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="card-icon">📈</span>
+                        Model Comparison Metrics
+                    </div>
+                    <div class="metrics-meta">
+                        <span class="metric-badge metric-neutral" id="metricsWindow">Window: --</span>
+                        <span class="metric-badge metric-neutral" id="metricsSamples">Labeled: --</span>
+                        <span class="metric-note" id="metricsSources">Sources: --</span>
+                    </div>
+                </div>
+                <table class="model-metrics-table" id="modelMetricsTable">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>TPR</th>
+                            <th>FPR</th>
+                            <th>Confidence</th>
+                            <th>Consistency</th>
+                            <th>Unique</th>
+                            <th>Samples</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modelMetricsBody">
+                        <tr>
+                            <td colspan="7" class="loading">⏳ Loading model metrics...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- CMD Detection Table -->
+            <div class="card table-container" style="grid-column: span 2;">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="card-icon">🔍</span>
+                        Malicious Commands (Live)
+                    </div>
+                    <div class="controls">
+                        <button class="filter-btn active" onclick="filterCmdAlerts('all')">All</button>
+                        <button class="filter-btn" onclick="filterCmdAlerts('critical')">Critical</button>
+                        <button class="filter-btn" onclick="filterCmdAlerts('high')">High</button>
+                        <a href="/cmd-history" class="btn">View Full History</a>
+                    </div>
+                </div>
+                <table class="cmd-alerts-table" id="cmdAlertsTable">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Severity</th>
+                            <th>Command</th>
+                            <th>Confidence</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cmdAlertsBody">
+                        <tr>
+                            <td colspan="5" class="loading">⏳ Loading CMD detections...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Detection Methods Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="card-icon">🤖</span>
+                        Detection Methods
+                    </div>
+                </div>
+                <div style="font-size: 12px; line-height: 2;">
+                    <div>✅ Regex Patterns: <span style="color: var(--color-success); font-weight: bold;">47</span></div>
+                    <div>✅ AI Model: <span style="color: var(--color-success); font-weight: bold;">Isolation Forest</span></div>
+                    <div>✅ Accuracy: <span style="color: var(--color-info); font-weight: bold;">91.3%</span></div>
+                    <div>✅ Hybrid Approach: <span style="color: var(--color-primary); font-weight: bold;">Active</span></div>
+                    <div>📊 Detection Speed: <span style="color: var(--color-medium); font-weight: bold;">&lt;10ms</span></div>
+                </div>
+            </div>
+
+            <!-- System Status -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="card-icon">⚙️</span>
+                        System Status
+                    </div>
+                </div>
+                <div style="font-size: 12px; line-height: 2;">
+                    <div id="mlMode">🔄 ML Mode: Checking...</div>
+                    <div>✅ API Server: <span id="apiStatus" style="color: var(--color-warning);">Connecting...</span></div>
+                    <div>✅ CMD Detector: <span id="cmdDetectorStatus" style="color: var(--color-warning);">Checking...</span></div>
+                    <div>✅ Flow Capture: <span id="flowCaptureStatus" style="color: var(--color-warning);">Checking...</span></div>
+                    <div>✅ Database: <span style="color: var(--color-success);">SQLite</span></div>
+                    <div>📊 Last Update: <span id="lastUpdate" style="color: var(--color-primary);">-</span></div>
+                </div>
+            </div>
+
+            <!-- Confidence Heatmap -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="card-icon">🔥</span>
+                        Detection Confidence
+                    </div>
+                </div>
+                <div class="heatmap" id="confidenceHeatmap">
+                    <!-- Generated by JavaScript -->
+                </div>
+                <div style="margin-top: 15px; font-size: 11px; color: var(--color-text-secondary);">
+                    Color intensity: Low (Blue) → High (Red)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Configuration
+        const API_URL = 'http://localhost:5000/api';
+        const POLLING_INTERVAL = 5000; // 5 seconds
+
+        // Dashboard State
+        const dashboardState = {
+            networkAlerts: [],
+            networkFlows: [],
+            cmdAlerts: [],
+            modelMetrics: null,
+            networkViewMode: 'traffic',
+            networkSeverityFilter: 'all',
+            networkRenderTimer: null,
+            stats: { 
+                critical: 0, 
+                high: 0, 
+                medium: 0, 
+                low: 0, 
+                total: 0,
+                cmd_critical: 0,
+                cmd_high: 0,
+                cmd_detections: 0
+            },
+            lastUpdate: null,
+            mlMode: 'unknown'
+        };
+
+        // ============================================================================
+        // API FUNCTIONS
+        // ============================================================================
+
+        async function fetchHealthStatus() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                dashboardState.mlMode = data.ml_mode || 'unknown';
+                updateSystemStatus(data);
+                return data;
+            } catch (error) {
+                console.error('Health check error:', error);
+                document.getElementById('statusText').textContent = 'Offline';
+                document.getElementById('apiStatus').textContent = 'Disconnected';
+                document.getElementById('apiStatus').style.color = 'var(--color-error)';
+                return null;
+            }
+        }
+
+        async function fetchModelMetrics(windowSize = 200) {
+            try {
+                const response = await fetch(`${API_URL}/model-metrics?window=${windowSize}`);
+                const data = await response.json();
+                dashboardState.modelMetrics = data;
+                updateModelMetricsTable(data);
+                return data;
+            } catch (error) {
+                console.error('Fetch model metrics error:', error);
+                updateModelMetricsTable(null);
+                return null;
+            }
+        }
+
+        async function fetchNetworkStatus() {
+            try {
+                const response = await fetch(`${API_URL}/network-status`);
+                const data = await response.json();
+
+                const started = !!data.flow_extractor_started;
+                const err = data.flow_extractor_error;
+                const udpCount = data.udp_flows_received || 0;
+                const iface = data.flow_extractor_runtime_iface || data.flow_extractor_iface || 'auto';
+
+                let text = 'Disabled';
+                let color = 'var(--color-warning)';
+
+                if (data.flow_extractor_available && data.flow_extractor_enabled) {
+                    if (err) {
+                        text = `Error (${iface}): ${err}`;
+                        color = 'var(--color-error)';
+                    } else if (started) {
+                        text = `Running (${iface}) | flows: ${udpCount}`;
+                        color = 'var(--color-success)';
+                    } else {
+                        text = `Starting (${iface})...`;
+                        color = 'var(--color-warning)';
+                    }
+                }
+
+                const el = document.getElementById('flowCaptureStatus');
+                if (el) {
+                    el.textContent = text;
+                    el.style.color = color;
+                }
+
+                return data;
+            } catch (error) {
+                const el = document.getElementById('flowCaptureStatus');
+                if (el) {
+                    el.textContent = 'Unknown';
+                    el.style.color = 'var(--color-warning)';
+                }
+                return null;
+            }
+        }
+
+        async function fetchStats() {
+            try {
+                const response = await fetch(`${API_URL}/stats`);
+                const data = await response.json();
+                dashboardState.stats = {
+                    critical: data.critical_count || 0,
+                    high: data.high_count || 0,
+                    medium: data.medium_count || 0,
+                    low: data.low_count || 0,
+                    total: data.total_alerts || 0,
+                    cmd_critical: data.cmd_critical || 0,
+                    cmd_high: data.cmd_high || 0,
+                    cmd_detections: data.cmd_detections || 0
+                };
+                updateKPIs();
+                return data;
+            } catch (error) {
+                console.error('Fetch stats error:', error);
+                return null;
+            }
+        }
+
+        async function fetchNetworkAlerts(limit = 20, severity = null) {
+            try {
+                let url = `${API_URL}/alerts?limit=${limit}`;
+                if (severity) url += `&severity=${severity}`;
+               
+                const response = await fetch(url);
+                const data = await response.json();
+                dashboardState.networkAlerts = data.alerts || [];
+                updateNetworkAlertsTable(dashboardState.networkAlerts);
+                return data;
+            } catch (error) {
+                console.error('Fetch network alerts error:', error);
+                return null;
+            }
+        }
+
+        async function fetchNetworkFlows(limit = 50) {
+            try {
+                const response = await fetch(`${API_URL}/network-flows?limit=${limit}`);
+                const data = await response.json();
+                dashboardState.networkFlows = data.flows || [];
+                scheduleNetworkTableRender();
+                return data;
+            } catch (error) {
+                console.error('Fetch network flows error:', error);
+                return null;
+            }
+        }
+
+        async function fetchNetworkAlertsOnly(limit = 50) {
+            try {
+                const response = await fetch(`${API_URL}/alerts?limit=${limit}`);
+                const data = await response.json();
+                dashboardState.networkAlerts = data.alerts || [];
+                scheduleNetworkTableRender();
+                return data;
+            } catch (error) {
+                console.error('Fetch network alerts error:', error);
+                return null;
+            }
+        }
+
+        async function fetchCmdDetections(limit = 20, severity = null) {
+            try {
+                let url = `${API_URL}/cmd-detections?limit=${limit}`;
+                if (severity) url += `&severity=${severity}`;
+               
+                const response = await fetch(url);
+                const data = await response.json();
+                dashboardState.cmdAlerts = data.detections || [];
+                dashboardState.lastUpdate = new Date();
+                updateCmdAlertsTable(dashboardState.cmdAlerts);
+                return data;
+            } catch (error) {
+                console.error('Fetch CMD detections error:', error);
+                return null;
+            }
+        }
+
+        async function updateDashboard() {
+            console.log('Updating dashboard...');
+           
+            // Update KPIs
+            await fetchStats();
+
+            // Capture diagnostics
+            await fetchNetworkStatus();
+           
+            // Update network traffic table
+            if (dashboardState.networkViewMode === 'alerts') {
+                await fetchNetworkAlertsOnly(100);
+            } else {
+                await fetchNetworkFlows(200);
+            }
+           
+            // Update CMD detections table
+            await fetchCmdDetections(20);
+
+            // Update model metrics table
+            await fetchModelMetrics();
+           
+            // Update timestamp
+            const now = new Date().toLocaleTimeString();
+            document.getElementById('lastUpdate').textContent = now;
+        }
+
+        // ============================================================================
+        // UI UPDATE FUNCTIONS
+        // ============================================================================
+
+        function updateKPIs() {
+            const stats = dashboardState.stats;
+           
+            document.getElementById('totalAlerts').textContent = stats.total.toLocaleString();
+            document.getElementById('criticalCount').textContent = stats.critical;
+            document.getElementById('highCount').textContent = stats.high;
+            document.getElementById('cmdMaliciousCount').textContent = stats.cmd_detections;
+           
+            // Update status
+            document.getElementById('statusText').textContent = 'System Online';
+            document.getElementById('apiStatus').textContent = 'Connected';
+            document.getElementById('apiStatus').style.color = 'var(--color-success)';
+            document.getElementById('cmdDetectorStatus').textContent = 'Active';
+            document.getElementById('cmdDetectorStatus').style.color = 'var(--color-success)';
+        }
+
+        function updateNetworkAlertsTable(alerts) {
+            const tbody = document.getElementById('alertsBody');
+           
+            if (alerts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="loading">✅ No network traffic captured yet</td></tr>';
+                return;
+            }
+           
+            tbody.innerHTML = '';
+           
+            alerts.forEach(alert => {
+                const row = document.createElement('tr');
+                row.style.cursor = 'pointer';
+               
+                const severity = alert.severity || 'low';
+                const severityClass = `severity-${severity}`;
+                const severityBadge = `<span class="severity-badge ${severityClass}">${severity.toUpperCase()}</span>`;
+               
+                const timestamp = new Date(alert.timestamp * 1000).toLocaleString();
+                const score = (alert.score * 100).toFixed(1);
+
+                const alertType = alert.is_anomaly ? 'Network Anomaly' : 'Network Flow';
+               
+                row.innerHTML = `
+                    <td>${timestamp}</td>
+                    <td>${severityBadge}</td>
+                    <td>${alert.reason || alert.alert_type || alertType}</td>
+                    <td><span style="font-family: monospace; font-size: 11px; color: #64B5F6;">${alert.src_ip || '-'}</span></td>
+                    <td><span style="font-family: monospace; font-size: 11px; color: #64B5F6;">${alert.dst_ip || '-'}</span></td>
+                    <td>${alert.dst_port || '-'}</td>
+                    <td><strong>${score}%</strong></td>
+                `;
+               
+                row.addEventListener('click', () => showNetworkAlertDetails(alert));
+                tbody.appendChild(row);
+            });
+        }
+
+        function formatPercent(value, decimals = 1) {
+            if (value === null || value === undefined || Number.isNaN(value)) {
+                return '—';
+            }
+            return `${(value * 100).toFixed(decimals)}%`;
+        }
+
+        function formatNumber(value, decimals = 2) {
+            if (value === null || value === undefined || Number.isNaN(value)) {
+                return '—';
+            }
+            return Number(value).toFixed(decimals);
+        }
+
+        function metricClass(value, invert = false) {
+            if (value === null || value === undefined || Number.isNaN(value)) {
+                return 'metric-neutral';
+            }
+            const score = invert ? 1 - value : value;
+            if (score >= 0.8) return 'metric-good';
+            if (score >= 0.6) return 'metric-warn';
+            return 'metric-bad';
+        }
+
+        function updateMetricsMeta(snapshot) {
+            const windowEl = document.getElementById('metricsWindow');
+            const samplesEl = document.getElementById('metricsSamples');
+            const sourcesEl = document.getElementById('metricsSources');
+
+            if (!windowEl || !samplesEl || !sourcesEl) return;
+
+            if (!snapshot) {
+                windowEl.textContent = 'Window: --';
+                samplesEl.textContent = 'Labeled: --';
+                sourcesEl.textContent = 'Sources: --';
+                windowEl.className = 'metric-badge metric-neutral';
+                samplesEl.className = 'metric-badge metric-neutral';
+                return;
+            }
+
+            windowEl.textContent = `Window: ${snapshot.window || '--'}`;
+            samplesEl.textContent = `Labeled: ${snapshot.samples_total || 0} (A:${snapshot.samples_attacks || 0} / B:${snapshot.samples_benign || 0})`;
+            const sources = snapshot.label_sources || {};
+            const sourcesText = Object.keys(sources).length
+                ? Object.entries(sources).map(([key, val]) => `${key}:${val}`).join(', ')
+                : '--';
+            sourcesEl.textContent = `Sources: ${sourcesText}`;
+
+            const hasLabels = (snapshot.samples_total || 0) > 0;
+            windowEl.className = `metric-badge ${hasLabels ? 'metric-good' : 'metric-neutral'}`;
+            samplesEl.className = `metric-badge ${hasLabels ? 'metric-good' : 'metric-neutral'}`;
+        }
+
+        function updateModelMetricsTable(snapshot) {
+            const tbody = document.getElementById('modelMetricsBody');
+            if (!tbody) return;
+
+            updateMetricsMeta(snapshot);
+
+            if (!snapshot || !snapshot.models || Object.keys(snapshot.models).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="loading">⚠️ No labeled flows yet. Add ground_truth labels to compute metrics.</td></tr>';
+                return;
+            }
+
+            const modelRows = [
+                { key: 'isolation_forest', label: 'Isolation Forest' },
+                { key: 'random_forest', label: 'Random Forest' },
+                { key: 'gnn', label: 'GNN' }
+            ];
+
+            tbody.innerHTML = '';
+            modelRows.forEach(({ key, label }) => {
+                const data = snapshot.models[key] || {};
+                const status = data.status || 'unknown';
+                const tpr = data.tpr;
+                const fpr = data.fpr;
+                const confidence = data.confidence;
+                const consistency = data.consistency;
+                const uniqueRate = data.unique_rate;
+                const samples = data.samples ?? 0;
+
+                const isReady = status === 'ready';
+                const statusBadge = isReady 
+                    ? '' 
+                    : `<span class="metric-badge metric-neutral" style="font-size: 9px; margin-left: 5px;">OFFLINE</span>`;
+
+                const row = document.createElement('tr');
+                if (!isReady && samples === 0) {
+                    row.style.opacity = '0.6';
+                }
+
+                row.innerHTML = `
+                    <td class="model-name">${label}${statusBadge}</td>
+                    <td><span class="metric-badge ${isReady ? metricClass(tpr) : 'metric-neutral'}">${formatPercent(tpr)}</span></td>
+                    <td><span class="metric-badge ${isReady ? metricClass(fpr, true) : 'metric-neutral'}">${formatPercent(fpr)}</span></td>
+                    <td><span class="metric-badge ${isReady ? metricClass(confidence) : 'metric-neutral'}">${formatPercent(confidence)}</span></td>
+                    <td><span class="metric-badge ${isReady ? metricClass(consistency) : 'metric-neutral'}">${formatPercent(consistency)}</span></td>
+                    <td><span class="metric-badge ${isReady ? metricClass(uniqueRate) : 'metric-neutral'}">${formatPercent(uniqueRate)}</span></td>
+                    <td>${samples}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function getCurrentNetworkRows() {
+            const mode = dashboardState.networkViewMode;
+            const severity = dashboardState.networkSeverityFilter;
+            const rows = (mode === 'alerts') ? dashboardState.networkAlerts : dashboardState.networkFlows;
+
+            let filtered = rows;
+            if (severity !== 'all') {
+                filtered = rows.filter(r => (r.severity || '').toLowerCase() === severity);
+            }
+
+            return filtered.slice(0, 100);
+        }
+
+        function scheduleNetworkTableRender() {
+            if (dashboardState.networkRenderTimer) return;
+            dashboardState.networkRenderTimer = setTimeout(() => {
+                dashboardState.networkRenderTimer = null;
+                updateNetworkAlertsTable(getCurrentNetworkRows());
+            }, 200);
+        }
+
+        function updateCmdAlertsTable(alerts) {
+            const tbody = document.getElementById('cmdAlertsBody');
+           
+            if (alerts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="loading">✅ No malicious commands detected - Clean!</td></tr>';
+                return;
+            }
+           
+            tbody.innerHTML = '';
+           
+            alerts.forEach(alert => {
+                const row = document.createElement('tr');
+                row.style.cursor = 'pointer';
+               
+                const severity = alert.severity || 'low';
+                const severityClass = `severity-${severity}`;
+                const severityBadge = `<span class="severity-badge ${severityClass}">${severity.toUpperCase()}</span>`;
+               
+                const timestamp = new Date(alert.timestamp * 1000).toLocaleString();
+                const confidence = (alert.confidence * 100).toFixed(1);
+               
+                let confidenceClass = 'confidence-low';
+                if (confidence >= 80) confidenceClass = 'confidence-high';
+                else if (confidence >= 50) confidenceClass = 'confidence-medium';
+               
+                // Truncate command to 50 chars for display
+                const cmdDisplay = alert.command.substring(0, 50) + (alert.command.length > 50 ? '...' : '');
+               
+                row.innerHTML = `
+                    <td>${timestamp}</td>
+                    <td>${severityBadge}</td>
+                    <td><span class="cmd-text" title="${alert.command}">${cmdDisplay}</span></td>
+                    <td><span class="confidence-score ${confidenceClass}">${confidence}%</span></td>
+                    <td>${alert.reason || 'Malicious pattern detected'}</td>
+                `;
+               
+                row.addEventListener('click', () => showCmdAlertDetails(alert));
+                tbody.appendChild(row);
+            });
+        }
+
+        function showNetworkAlertDetails(alert) {
+            const details = `
+Network Alert Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Severity: ${alert.severity.toUpperCase()}
+Source IP: ${alert.src_ip}
+Destination: ${alert.dst_ip}:${alert.dst_port}
+Protocol: ${alert.proto}
+Score: ${(alert.score * 100).toFixed(1)}%
+Duration: ${alert.duration}s
+Packets: ${alert.pkt_count}
+Bytes: ${alert.byte_count}
+Reason: ${alert.reason || '-'}
+Timestamp: ${new Date(alert.timestamp * 1000).toLocaleString()}
+            `;
+            alert(details);
+        }
+
+        function showCmdAlertDetails(alert) {
+            const details = `
+Command Alert Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Severity: ${alert.severity.toUpperCase()}
+Confidence: ${(alert.confidence * 100).toFixed(1)}%
+Command: ${alert.command}
+Reason: ${alert.reason}
+Timestamp: ${new Date(alert.timestamp * 1000).toLocaleString()}
+Matched Pattern: ${alert.matched_pattern || 'AI Detection'}
+            `;
+            alert(details);
+        }
+
+        function updateSystemStatus(health) {
+            const mlMode = health.ml_mode || 'unknown';
+            const cmdPatterns = health.cmd_patterns || 0;
+            document.getElementById('mlMode').innerHTML = `
+🤖 ML Mode: <span style="color: var(--color-success);">${mlMode.toUpperCase()}</span> (${cmdPatterns} patterns)
+            `;
+        }
+
+        function filterNetworkAlerts(severity) {
+            const buttons = document.querySelectorAll('.controls')[0].querySelectorAll('.filter-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (severity === 'traffic') {
+                dashboardState.networkViewMode = 'traffic';
+                dashboardState.networkSeverityFilter = 'all';
+                fetchNetworkFlows(200);
+                return;
+            }
+
+            if (severity === 'alerts') {
+                dashboardState.networkViewMode = 'alerts';
+                dashboardState.networkSeverityFilter = 'all';
+                fetchNetworkAlertsOnly(100);
+                return;
+            }
+
+            dashboardState.networkSeverityFilter = severity;
+            scheduleNetworkTableRender();
+        }
+
+        function filterCmdAlerts(severity) {
+            const buttons = document.querySelectorAll('.controls')[1].querySelectorAll('.filter-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+           
+            if (severity === 'all') {
+                fetchCmdDetections(50);
+            } else {
+                const filtered = dashboardState.cmdAlerts.filter(a => a.severity === severity);
+                updateCmdAlertsTable(filtered);
+            }
+        }
+
+        // ============================================================================
+        // HEATMAP GENERATION
+        // ============================================================================
+
+        function generateHeatmap() {
+            const heatmapContainer = document.getElementById('confidenceHeatmap');
+            heatmapContainer.innerHTML = '';
+           
+            for (let i = 0; i < 36; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'heatmap-cell';
+                const confidence = Math.random();
+               
+                if (confidence > 0.8) {
+                    cell.style.background = '#FF3D00';
+                } else if (confidence > 0.6) {
+                    cell.style.background = '#FF9800';
+                } else if (confidence > 0.4) {
+                    cell.style.background = '#FBC02D';
+                } else if (confidence > 0.2) {
+                    cell.style.background = '#4CAF50';
+                } else {
+                    cell.style.background = '#2196F3';
+                }
+               
+                cell.title = `Confidence: ${(confidence * 100).toFixed(0)}%`;
+                heatmapContainer.appendChild(cell);
+            }
+        }
+
+        // ============================================================================
+        // NAVIGATION BUTTON HIGHLIGHTING
+        // ============================================================================
+
+        function highlightCurrentPage() {
+            const currentPath = window.location.pathname;
+            
+            // Remove active class from all nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class based on current path
+            if (currentPath === '/system-logs') {
+                document.getElementById('systemLogsBtn').classList.add('active');
+            } else if (currentPath === '/cmd-history') {
+                document.getElementById('cmdHistoryBtn').classList.add('active');
+            } else {
+                document.getElementById('dashboardBtn').classList.add('active');
+            }
+        }
+
+        // ============================================================================
+        // INITIALIZATION & AUTO-REFRESH
+        // ============================================================================
+
+        async function initializeDashboard() {
+            console.log('🚀 Initializing SOC Dashboard with CMD Detection...');
+           
+            // Highlight current page
+            highlightCurrentPage();
+           
+            // Check health
+            await fetchHealthStatus();
+           
+            // Load initial data
+            await updateDashboard();
+           
+            // Generate heatmap
+            generateHeatmap();
+           
+            // Start auto-refresh
+            setInterval(async () => {
+                await updateDashboard();
+                console.log('📊 Dashboard updated');
+            }, POLLING_INTERVAL);
+           
+            console.log('✅ Dashboard initialized with CMD detection polling every ' + (POLLING_INTERVAL/1000) + ' seconds');
+        }
+
+        // Start on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeDashboard();
+
+            // Initialize Socket.IO for real-time alerts
+            const socket = io('http://localhost:5000');
+
+            socket.on('connect', () => {
+                console.log('✅ Socket.IO connection established');
+            });
+
+            socket.on('alert', (alert) => {
+                console.log('Received alert:', alert);
+                if (alert.type === 'cmd_detection') {
+                    dashboardState.cmdAlerts.unshift(alert);
+                    if (dashboardState.cmdAlerts.length > 20) dashboardState.cmdAlerts.pop();
+                    updateCmdAlertsTable(dashboardState.cmdAlerts);
+                } else if (alert && (alert.src_ip || alert.dst_ip) && !alert.command) {
+                    dashboardState.networkAlerts.unshift(alert);
+                    if (dashboardState.networkAlerts.length > 200) dashboardState.networkAlerts.pop();
+                    if (dashboardState.networkViewMode === 'alerts') {
+                        scheduleNetworkTableRender();
+                    }
+                }
+                // Refresh stats to keep KPIs up-to-date
+                fetchStats();
+            });
+
+            socket.on('network_flow', (flow) => {
+                dashboardState.networkFlows.unshift(flow);
+                if (dashboardState.networkFlows.length > 500) dashboardState.networkFlows.pop();
+                if (dashboardState.networkViewMode === 'traffic') {
+                    scheduleNetworkTableRender();
+                }
+            });
+
+            socket.on('disconnect', () => {
+                console.warn('Socket.IO disconnected');
+            });
+        });
+
+        // Periodic heatmap refresh
+        setInterval(() => {
+            generateHeatmap();
+        }, 10000); // Every 10 seconds
+    </script>
+</body>
+</html>

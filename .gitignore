@@ -1,0 +1,16 @@
+# Python virtual environment
+.venv/
+
+# Cache files
+__pycache__/
+
+# VS Code
+.vscode/
+
+# Environment variables
+.env
+*.env
+
+# Large files
+alerts.db
+alerts.db-journal

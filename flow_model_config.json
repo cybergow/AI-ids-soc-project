@@ -1,0 +1,13 @@
+{
+  "features": [
+    "duration",
+    "pkt_count",
+    "byte_count",
+    "src2dst_pkts",
+    "dst2src_pkts",
+    "mean_pkt_size"
+  ],
+  "rf_threshold": 0.95,
+  "iso_contamination": 0.2,
+  "iso_offset": -0.5359695635861301
+}
