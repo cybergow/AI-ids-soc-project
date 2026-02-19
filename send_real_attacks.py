@@ -107,6 +107,7 @@ def generate_attack_flow():
                  "state": "EST",
                  "ground_truth": 1
              }
+
         }
     ]
     

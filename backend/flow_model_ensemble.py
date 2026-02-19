@@ -43,6 +43,7 @@ except Exception:
         "meanpktsize": "mean_pkt_size",
     }
 
+<<<<<<< HEAD
 class MockGNNScorer:
     """Simulates GNN behavior when torch is unavailable for demonstration purposes."""
     def __init__(self):
@@ -86,6 +87,8 @@ if not GNN_AVAILABLE:
     GNNFlowScorer = MockGNNScorer
     GNN_AVAILABLE = True
 
+=======
+>>>>>>> 98548e09191523a7a862f528413a95194cfee765
 ISO_MODEL_PATH = "flow_isoforest_model.pkl"
 RF_MODEL_PATH = "flow_random_forest_model.pkl"
 SCALER_PATH = "flow_model_scaler.pkl"
@@ -93,9 +96,15 @@ CONFIG_PATH = "flow_model_config.json"
 
 DEFAULT_CONFIG = {
     "features": FEATURE_COLUMNS,
+<<<<<<< HEAD
     "rf_threshold": 0.95,
     "iso_contamination": 0.2,
     "iso_score_threshold": 0.225,
+=======
+    "rf_threshold": 0.5,
+    "iso_contamination": 0.15,
+    "iso_score_threshold": 0.85,
+>>>>>>> 98548e09191523a7a862f528413a95194cfee765
 }
 
 
@@ -228,12 +237,15 @@ class FlowModelEnsemble:
 
         self.has_isolation_forest = self.iso_model is not None
         self.has_random_forest = self.rf_model is not None
+<<<<<<< HEAD
         # Always allow GNN via mock if needed
         if GNN_AVAILABLE and self.gnn_scorer is None:
              try:
                 self.gnn_scorer = GNNFlowScorer()
              except:
                 pass
+=======
+>>>>>>> 98548e09191523a7a862f528413a95194cfee765
         self.has_gnn = bool(self.gnn_scorer and self.gnn_scorer.is_ready)
         self.is_ready = self.has_isolation_forest or self.has_random_forest or self.has_gnn
 

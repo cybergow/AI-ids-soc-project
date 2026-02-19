@@ -8,7 +8,11 @@
     "mean_pkt_size"
   ],
   "k_neighbors": 8,
+<<<<<<< HEAD
   "threshold": 0.3,
+=======
+  "threshold": 0.6937898993492126,
+>>>>>>> 98548e09191523a7a862f528413a95194cfee765
   "min_nodes": 5,
   "window_size": 120,
   "hidden_dim": 32,

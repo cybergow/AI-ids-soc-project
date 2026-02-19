@@ -7,7 +7,14 @@
     "dst2src_pkts",
     "mean_pkt_size"
   ],
+<<<<<<< HEAD
   "rf_threshold": 0.95,
   "iso_contamination": 0.2,
   "iso_offset": -0.5359695635861301
+=======
+  "rf_threshold": 0.852589086204869,
+  "iso_contamination": 0.15,
+  "iso_score_threshold": 0.15006894445644428,
+  "iso_offset": -0.5387353696076923
+>>>>>>> 98548e09191523a7a862f528413a95194cfee765
 }
